@@ -306,8 +306,10 @@ mod context;
 mod event;
 mod r#loop;
 mod mutex;
+mod promise;
 
 pub use context::*;
 pub use event::*;
 pub use mutex::*;
+pub use promise::*;
 pub use r#loop::*;
