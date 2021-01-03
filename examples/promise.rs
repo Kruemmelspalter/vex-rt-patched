@@ -17,12 +17,10 @@ impl Robot for TaskBot {
     }
     fn opcontrol(&self, _: Context) {
         println!("opcontrol");
-        let (promise, resolve) = Promise::<i32>::new();
-        Task::spawn(|| {
+        let promise = Promise::spawn(|| {
             Task::delay(Duration::from_secs(1));
-            resolve(10);
-        })
-        .unwrap();
+            10
+        });
         println!(
             "n = {}",
             select! {
