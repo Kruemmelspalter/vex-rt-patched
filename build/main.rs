@@ -14,7 +14,7 @@ const PROS_ZIP_STR: &str = "build/kernel@3.3.1.zip";
 const PROS_WRAPPER_STR: &str = "build/wrapper.h";
 
 // Types to be included by bindgen
-const WHITELISTED_TYPES: &[&str] = &["motor_.*", "task_.*", "mutex_.*"];
+const WHITELISTED_TYPES: &[&str] = &["motor_.*", "task_.*", "mutex_.*", "queue_.*"];
 
 // Enums to be automatically "rustified" by bindgen
 const RUSTIFIED_ENUMS: &[&str] = &["motor_.*", "task_.*"];
@@ -23,7 +23,7 @@ const RUSTIFIED_ENUMS: &[&str] = &["motor_.*", "task_.*"];
 const BITFIELD_ENUMS: &[&str] = &["motor_flag_e"];
 
 // Functions to be included by bindgen
-const WHITELISTED_FUNCS: &[&str] = &["motor_.*", "task_.*", "mutex_.*", "millis"];
+const WHITELISTED_FUNCS: &[&str] = &["motor_.*", "task_.*", "mutex_.*", "queue_.*", "millis"];
 
 // Variables to be included by bindgen
 const WHITELISTED_VARS: &[&str] = &["VEX_RT_.*", ".*_DEFAULT"];
