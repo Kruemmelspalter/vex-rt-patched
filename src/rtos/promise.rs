@@ -2,14 +2,14 @@ use core::cell::UnsafeCell;
 
 use alloc::sync::{Arc, Weak};
 
-use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable};
-use crate::util::owner::Owner;
+use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable, Task};
+use crate::{error::Error, util::owner::Owner};
 
 #[derive(Clone)]
 /// Represents an ongoing operation which produces a result.
-pub struct Promise<T = ()>(Arc<Mutex<PromiseData<T>>>);
+pub struct Promise<T: 'static = ()>(Arc<Mutex<PromiseData<T>>>);
 
-impl<T> Promise<T> {
+impl<T: 'static> Promise<T> {
     /// Creates a new lightweight promise and an associated resolve function.
     ///
     /// # Example
@@ -42,7 +42,7 @@ impl<T> Promise<T> {
 
     /// A [`Selectable`] event which occurs when the promise is resolved.
     pub fn done<'a>(&'a self) -> impl Selectable<&'a T> + 'a {
-        struct PromiseSelect<'a, T> {
+        struct PromiseSelect<'a, T: 'static> {
             promise: &'a Promise<T>,
             _handle: EventHandle<PromiseHandle<T>>,
         };
@@ -71,6 +71,24 @@ impl<T> Promise<T> {
             promise: self,
             _handle: handle_event(PromiseHandle(Arc::downgrade(&self.0))),
         }
+    }
+}
+
+impl<T: Send + Sync + 'static> Promise<T> {
+    #[inline]
+    /// Spawns a task to run the given function and returns a [`Promise`] that
+    /// resolves with the result when it returns. Panics on failure; see
+    /// [`Promise::try_spawn()`].
+    pub fn spawn(f: impl FnOnce() -> T + Send + 'static) -> Self {
+        Self::try_spawn(f).unwrap()
+    }
+
+    /// Spawns a task to run the given function and returns a [`Promise`] that
+    /// resolves with the result when it returns.
+    pub fn try_spawn(f: impl FnOnce() -> T + Send + 'static) -> Result<Self, Error> {
+        let (promise, resolve) = Self::new();
+        Task::spawn(|| resolve(f()))?;
+        Ok(promise)
     }
 }
 
