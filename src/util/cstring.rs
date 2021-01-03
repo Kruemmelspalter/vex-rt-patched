@@ -18,7 +18,7 @@ where
 
 #[inline]
 #[allow(dead_code)]
-pub fn from_cstring<'a>(cstring: CString<'a>) -> String {
+pub fn from_cstring(cstring: CString<'_>) -> String {
     unsafe { from_cstring_raw(cstring.into_raw()) }
 }
 

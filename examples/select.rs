@@ -21,7 +21,7 @@ impl Robot for SelectRobot {
             println!("{}", x);
             x += 1;
             select! {
-                _ = l.next() => {},
+                _ = l.select() => {},
                 _ = ctx.done() => break,
             }
         }

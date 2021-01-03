@@ -22,6 +22,12 @@ impl Event {
     }
 }
 
+impl Default for Event {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Represents a handle into the listing of the current task in an [`Event`].
 /// When this handle is dropped, that task is removed from the event's set.
 pub struct EventHandle<O: Owner<Event>>(Option<SharedSetHandle<Task, EventHandleOwner<O>>>);

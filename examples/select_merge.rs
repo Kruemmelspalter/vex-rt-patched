@@ -22,7 +22,7 @@ impl Robot for SelectRobot {
             println!("{}", x);
             x += 1;
             let event = select_merge! {
-                _ = l.next() => false,
+                _ = l.select() => false,
                 _ = ctx.done() => true,
             };
             if select! { b = event => b } {

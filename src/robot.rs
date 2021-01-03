@@ -21,6 +21,7 @@ pub struct ContextWrapper(Mutex<Option<Context>>);
 impl ContextWrapper {
     #[doc(hidden)]
     #[inline]
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         Self(Mutex::new(None))
     }

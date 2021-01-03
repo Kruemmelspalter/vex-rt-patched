@@ -41,7 +41,7 @@ impl<T: 'static> Promise<T> {
     }
 
     /// A [`Selectable`] event which occurs when the promise is resolved.
-    pub fn done<'a>(&'a self) -> impl Selectable<&'a T> + 'a {
+    pub fn done(&'_ self) -> impl Selectable<&'_ T> + '_ {
         struct PromiseSelect<'a, T: 'static> {
             promise: &'a Promise<T>,
             _handle: EventHandle<PromiseHandle<T>>,

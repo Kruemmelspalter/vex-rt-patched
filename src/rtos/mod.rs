@@ -4,7 +4,6 @@ use alloc::{boxed::Box, format, string::String};
 use core::{
     fmt::{self, Debug, Formatter},
     marker::PhantomData,
-    ptr::null_mut,
     time::Duration,
 };
 
@@ -48,7 +47,7 @@ impl Task {
         let ptr = as_cstring(name, |cname| unsafe {
             Ok(bindings::task_get_by_name(cname.into_raw()))
         })?;
-        if ptr == null_mut() {
+        if ptr.is_null() {
             Err(Error::Custom(format!("task not found: {}", name)))
         } else {
             Ok(Task(ptr))
@@ -78,7 +77,7 @@ impl Task {
         unsafe {
             let arg = Box::into_raw(cb);
             let r = Task::spawn_raw(name, priority, stack_depth, run::<F>, arg as *mut _);
-            if let Err(_) = r {
+            if r.is_err() {
                 // We need to re-box the pointer if the task could not be created, to avoid a
                 // memory leak.
                 Box::from_raw(arg);
@@ -90,7 +89,7 @@ impl Task {
     #[inline]
     /// Spawns a new task from a C function pointer and an arbitrary data
     /// pointer.
-    pub unsafe fn spawn_raw(
+    pub fn spawn_raw(
         name: &str,
         priority: u32,
         stack_depth: u16,
@@ -98,11 +97,13 @@ impl Task {
         arg: *mut libc::c_void,
     ) -> Result<Task, Error> {
         as_cstring(name, |cname| {
-            let task = bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw());
-            if task != null_mut() {
-                Ok(Task(task))
-            } else {
+            let task = unsafe {
+                bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw())
+            };
+            if task.is_null() {
                 Err(from_errno())
+            } else {
+                Ok(Task(task))
             }
         })
     }
@@ -137,6 +138,7 @@ impl Task {
     #[inline]
     /// Unsafely deletes the task.
     ///
+    /// # Safety
     /// This is unsafe because it does not guarantee that the task's code safely
     /// unwinds (i.e., that destructors are called, memory is freed and other
     /// resources are released).

@@ -29,7 +29,7 @@ impl Loop {
 
     #[inline]
     /// A [`Selectable`] event which occurs at the next loop cycle.
-    pub fn next<'a>(&'a mut self) -> impl Selectable + 'a {
+    pub fn select(&'_ mut self) -> impl Selectable + '_ {
         struct LoopSelect<'a>(&'a mut Loop);
 
         impl<'a> Selectable for LoopSelect<'a> {

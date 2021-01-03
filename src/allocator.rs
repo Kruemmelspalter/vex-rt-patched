@@ -1,7 +1,6 @@
 //! Allocator
 
 use core::alloc::{GlobalAlloc, Layout};
-use libc;
 
 struct Alloc;
 
