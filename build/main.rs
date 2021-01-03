@@ -7,19 +7,36 @@ use std::str;
 use bindgen;
 use zip_extensions::zip_extract;
 
-fn main() {
-    // define input paths
-    let pros_zip_str = "build/kernel@3.3.1.zip";
-    let wrapper_h_str = "build/wrapper.h";
+// Path to PROS release zip (relative to project root)
+const PROS_ZIP_STR: &str = "build/kernel@3.3.1.zip";
 
+// Path to PROS wrapper.h (relative to project root)
+const PROS_WRAPPER_STR: &str = "build/wrapper.h";
+
+// Types to be included by bindgen
+const WHITELISTED_TYPES: &[&str] = &["motor_.*", "task_.*", "mutex_.*"];
+
+// Enums to be automatically "rustified" by bindgen
+const RUSTIFIED_ENUMS: &[&str] = &["motor_.*", "task_.*"];
+
+// Enums to be treated as bitfields/bitflags by bindgen
+const BITFIELD_ENUMS: &[&str] = &["motor_flag_e"];
+
+// Functions to be included by bindgen
+const WHITELISTED_FUNCS: &[&str] = &["motor_.*", "task_.*", "mutex_.*", "millis"];
+
+// Variables to be included by bindgen
+const WHITELISTED_VARS: &[&str] = &["VEX_RT_.*", ".*_DEFAULT"];
+
+fn main() -> Result<(), io::Error> {
     // tell cargo to rerun this script if it's dependent files change
     println!("cargo:rerun-if-changed=build/main.rs");
-    println!("cargo:rerun-if-changed={}", pros_zip_str);
-    println!("cargo:rerun-if-changed={}", wrapper_h_str);
+    println!("cargo:rerun-if-changed={}", PROS_ZIP_STR);
+    println!("cargo:rerun-if-changed={}", PROS_WRAPPER_STR);
 
     // define input paths
-    let pros_zip_path = PathBuf::from(pros_zip_str);
-    let wrapper_h_path = PathBuf::from(wrapper_h_str);
+    let pros_zip_path = PathBuf::from(PROS_ZIP_STR);
+    let wrapper_h_path = PathBuf::from(PROS_WRAPPER_STR);
 
     // define output paths
     let out_dir_path = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -27,7 +44,7 @@ fn main() {
     let bindings_gen_path = out_dir_path.join("bindings.rs");
 
     // extract pros firmware
-    zip_extract(&pros_zip_path, &pros_extract_path).unwrap();
+    zip_extract(&pros_zip_path, &pros_extract_path)?;
 
     // tell cargo where to find pros link scripts and libraries
     println!(
@@ -36,7 +53,9 @@ fn main() {
     );
 
     let includes = get_includes(&pros_extract_path);
-    generate_bindings(&includes, &wrapper_h_path, &bindings_gen_path).unwrap();
+    generate_bindings(&includes, &wrapper_h_path, &bindings_gen_path)?;
+
+    Ok(())
 }
 
 /// detects system include paths for `arm-none-eabi` and pros.
@@ -76,8 +95,6 @@ fn get_includes(pros_extract_path: &PathBuf) -> Vec<String> {
         }
     }
 
-    println!("include_paths: {:#?}", include_paths);
-
     include_paths
 }
 
@@ -87,29 +104,39 @@ fn generate_bindings(
     wrapper_h_path: &PathBuf,
     bindings_gen_path: &PathBuf,
 ) -> Result<(), io::Error> {
-    let bindings = bindgen::Builder::default()
+    let mut bindings = bindgen::Builder::default()
         .header(wrapper_h_path.to_str().unwrap())
         .clang_arg("-target")
         .clang_arg("arm-none-eabi")
         .clang_args(includes)
-        .use_core()
         .ctypes_prefix("libc")
-        .layout_tests(false)
-        .whitelist_var("VEX_RT_.*")
-        .whitelist_var(".*_DEFAULT")
-        .whitelist_function("motor_.*")
-        .whitelist_function("task_.*")
-        .whitelist_function("mutex_.*")
-        .whitelist_function("millis")
-        .whitelist_type("motor_.*")
-        .whitelist_type("task_.*")
-        .whitelist_type("mutex_.*")
-        .rustified_enum("motor_.*")
-        .rustified_enum("task_.*")
-        .generate()
-        .expect("Could not generate bindings.");
+        .use_core()
+        .layout_tests(false);
 
-    bindings.write_to_file(&bindings_gen_path)?;
+    for t in WHITELISTED_TYPES {
+        bindings = bindings.whitelist_type(t);
+    }
+
+    for t in RUSTIFIED_ENUMS {
+        bindings = bindings.rustified_enum(t);
+    }
+
+    for t in BITFIELD_ENUMS {
+        bindings = bindings.bitfield_enum(t);
+    }
+
+    for f in WHITELISTED_FUNCS {
+        bindings = bindings.whitelist_function(f);
+    }
+
+    for v in WHITELISTED_VARS {
+        bindings = bindings.whitelist_var(v);
+    }
+
+    bindings
+        .generate()
+        .expect("Could not generate bindings.")
+        .write_to_file(&bindings_gen_path)?;
 
     Ok(())
 }
