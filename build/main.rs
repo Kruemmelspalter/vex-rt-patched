@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::process;
 use std::str;
 
-use bindgen;
 use zip_extensions::zip_extract;
 
 // Path to PROS release zip (relative to project root)
@@ -100,7 +99,7 @@ fn get_includes(pros_extract_path: &PathBuf) -> Vec<String> {
 
 /// Generates bindings using bindgen.
 fn generate_bindings(
-    includes: &Vec<String>,
+    includes: &[String],
     wrapper_h_path: &PathBuf,
     bindings_gen_path: &PathBuf,
 ) -> Result<(), io::Error> {

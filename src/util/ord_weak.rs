@@ -12,7 +12,7 @@ impl<T> OrdWeak<T> {
 impl<T: ?Sized> From<Weak<T>> for OrdWeak<T> {
     #[inline]
     fn from(weak: Weak<T>) -> Self {
-        Self(weak.clone())
+        Self(weak)
     }
 }
 

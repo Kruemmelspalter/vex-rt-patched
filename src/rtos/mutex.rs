@@ -3,7 +3,6 @@ use core::{
     fmt,
     fmt::{Debug, Display, Formatter},
     ops::{Deref, DerefMut},
-    ptr::null_mut,
 };
 
 use crate::{bindings, error::*};
@@ -32,13 +31,13 @@ impl<T> Mutex<T> {
     /// Creates a new mutex which wraps the given object.
     pub fn try_new(data: T) -> Result<Self, Error> {
         let mutex = unsafe { bindings::mutex_create() };
-        if mutex != null_mut() {
+        if mutex.is_null() {
+            Err(from_errno())
+        } else {
             Ok(Self {
                 data: UnsafeCell::new(data),
                 mutex,
             })
-        } else {
-            Err(from_errno())
         }
     }
 }
@@ -48,7 +47,7 @@ impl<T: ?Sized> Mutex<T> {
     /// Obtains a [`MutexGuard`] giving access to the object protected by the
     /// mutex. Blocks until access can be obtained. Panics on failure; see
     /// [`Mutex::try_lock()`].
-    pub fn lock<'a>(&'a self) -> MutexGuard<'a, T> {
+    pub fn lock(&'_ self) -> MutexGuard<'_, T> {
         self.try_lock()
             .unwrap_or_else(|err| panic!("Failed to lock mutex: {:?}", err))
     }
@@ -56,7 +55,7 @@ impl<T: ?Sized> Mutex<T> {
     #[inline]
     /// Obtains a [`MutexGuard`] giving access to the object protected by the
     /// mutex. Blocks until access can be obtained.
-    pub fn try_lock<'a>(&'a self) -> Result<MutexGuard<'a, T>, Error> {
+    pub fn try_lock(&'_ self) -> Result<MutexGuard<'_, T>, Error> {
         if unsafe { bindings::mutex_take(self.mutex, TIMEOUT_MAX) } {
             Ok(MutexGuard(self))
         } else {
@@ -67,7 +66,7 @@ impl<T: ?Sized> Mutex<T> {
     #[inline]
     /// Obtains a [`MutexGuard`] giving access to the object protected by the
     /// mutex, if it is available immediately. Does not block.
-    pub fn poll<'a>(&'a self) -> Option<MutexGuard<'a, T>> {
+    pub fn poll(&'_ self) -> Option<MutexGuard<'_, T>> {
         if unsafe { bindings::mutex_take(self.mutex, 0) } {
             Some(MutexGuard(self))
         } else {

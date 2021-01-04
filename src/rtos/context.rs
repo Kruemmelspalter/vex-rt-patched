@@ -74,7 +74,7 @@ impl Context {
     /// A [`Selectable`] event which occurs when the context is
     /// cancelled. The sleep amount takes the context deadline into
     /// consideration.
-    pub fn done<'a>(&'a self) -> impl Selectable + 'a {
+    pub fn done(&'_ self) -> impl Selectable + '_ {
         struct ContextSelect<'a>(&'a Context, EventHandle<ContextHandle>);
 
         impl<'a> Selectable for ContextSelect<'a> {
@@ -127,7 +127,9 @@ impl Drop for ContextData {
     fn drop(&mut self) {
         self.event.notify();
         for child in self.children.iter() {
-            child.upgrade().map(|c| cancel(&c.1));
+            if let Some(c) = child.upgrade() {
+                cancel(&c.1)
+            }
         }
     }
 }
