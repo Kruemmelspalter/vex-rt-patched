@@ -8,7 +8,7 @@ use crate::{
     error::{from_errno, Error},
 };
 
-use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable};
+use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable, TIMEOUT_MAX};
 
 /// Represents a FreeRTOS FIFO queue.
 ///
@@ -45,12 +45,12 @@ impl<T: Copy + Send> Queue<T> {
     /// Posts an item to the front of the queue. If the queue still does not
     /// have an empty slot after `timeout` has passed, the item is returned
     /// via the [`Err`] constructor.
-    pub fn prepend(&self, item: T, timeout: Duration) -> Result<(), T> {
+    pub fn prepend(&self, item: T, timeout: Option<Duration>) -> Result<(), T> {
         if unsafe {
             bindings::queue_prepend(
                 self.queue,
                 &item as *const T as *const c_void,
-                timeout.as_secs() as u32,
+                timeout.map_or(TIMEOUT_MAX, |v| v.as_secs() as u32),
             )
         } {
             self.event.lock().notify();
@@ -63,12 +63,12 @@ impl<T: Copy + Send> Queue<T> {
     /// Posts an item to the back of the queue. If the queue still does not have
     /// an empty slot after `timeout` has passed, the item is returned via
     /// the [`Err`] constructor.
-    pub fn append(&self, item: T, timeout: Duration) -> Result<(), T> {
+    pub fn append(&self, item: T, timeout: Option<Duration>) -> Result<(), T> {
         if unsafe {
             bindings::queue_append(
                 self.queue,
                 &item as *const T as *const c_void,
-                timeout.as_secs() as u32,
+                timeout.map_or(TIMEOUT_MAX, |v| v.as_secs() as u32),
             )
         } {
             self.event.lock().notify();
@@ -81,14 +81,14 @@ impl<T: Copy + Send> Queue<T> {
     /// Obtains a copy of the element at the front of the queue, without
     /// removing it. If the queue is still empty after `timeout` has passed,
     /// [`None`] is returned.
-    pub fn peek(&self, timeout: Duration) -> Option<T> {
+    pub fn peek(&self, timeout: Option<Duration>) -> Option<T> {
         let mut buf = Vec::<T>::new();
         buf.reserve_exact(1);
         unsafe {
             if bindings::queue_peek(
                 self.queue,
                 buf.as_mut_ptr() as *mut c_void,
-                timeout.as_secs() as u32,
+                timeout.map_or(TIMEOUT_MAX, |v| v.as_secs() as u32),
             ) {
                 buf.set_len(1);
                 Some(buf[0])
@@ -100,14 +100,14 @@ impl<T: Copy + Send> Queue<T> {
 
     /// Receives an element from the front of the queue, removing it. If the
     /// queue is still empty after `timeout` has passed, [`None`] is returned.
-    pub fn recv(&self, timeout: Duration) -> Option<T> {
+    pub fn recv(&self, timeout: Option<Duration>) -> Option<T> {
         let mut buf = Vec::<T>::new();
         buf.reserve_exact(1);
         unsafe {
             if bindings::queue_recv(
                 self.queue,
                 buf.as_mut_ptr() as *mut c_void,
-                timeout.as_secs() as u32,
+                timeout.map_or(TIMEOUT_MAX, |v| v.as_secs() as u32),
             ) {
                 buf.set_len(1);
                 Some(buf[0])
@@ -145,7 +145,7 @@ impl<T: Copy + Send> Queue<T> {
         impl<'a, T: Copy + Send> Selectable<T> for QueueSelect<'a, T> {
             #[inline]
             fn poll(self) -> Result<T, Self> {
-                self.0.recv(Duration::default()).ok_or(self)
+                self.0.recv(Some(Duration::default())).ok_or(self)
             }
             #[inline]
             fn sleep(&self) -> GenericSleep {
