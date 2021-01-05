@@ -1,4 +1,4 @@
-use alloc::{sync::Arc, vec::Vec};
+use alloc::vec::Vec;
 use core::{marker::PhantomData, mem::size_of, ptr::null_mut, time::Duration};
 
 use libc::c_void;
@@ -9,10 +9,7 @@ use crate::{
 };
 
 /// Represents a FreeRTOS FIFO queue.
-///
-/// Clones of the object refer to the same underlying queue; they are shallow
-/// clones.
-pub struct Queue<T: Copy + Send>(Arc<QueueData>, PhantomData<T>);
+pub struct Queue<T: Copy + Send>(bindings::queue_t, PhantomData<T>);
 
 impl<T: Copy + Send> Queue<T> {
     #[inline]
@@ -28,7 +25,7 @@ impl<T: Copy + Send> Queue<T> {
         if q == null_mut() {
             Err(from_errno())
         } else {
-            Ok(Self(Arc::new(QueueData(q)), PhantomData))
+            Ok(Self(q, PhantomData))
         }
     }
 
@@ -38,7 +35,7 @@ impl<T: Copy + Send> Queue<T> {
     pub fn prepend(&self, item: T, timeout: Duration) -> Result<(), T> {
         if unsafe {
             bindings::queue_prepend(
-                self.queue(),
+                self.0,
                 &item as *const T as *const c_void,
                 timeout.as_secs() as u32,
             )
@@ -55,7 +52,7 @@ impl<T: Copy + Send> Queue<T> {
     pub fn append(&self, item: T, timeout: Duration) -> Result<(), T> {
         if unsafe {
             bindings::queue_append(
-                self.queue(),
+                self.0,
                 &item as *const T as *const c_void,
                 timeout.as_secs() as u32,
             )
@@ -74,7 +71,7 @@ impl<T: Copy + Send> Queue<T> {
         buf.reserve_exact(1);
         unsafe {
             if bindings::queue_peek(
-                self.queue(),
+                self.0,
                 buf.as_mut_ptr() as *mut c_void,
                 timeout.as_secs() as u32,
             ) {
@@ -93,7 +90,7 @@ impl<T: Copy + Send> Queue<T> {
         buf.reserve_exact(1);
         unsafe {
             if bindings::queue_recv(
-                self.queue(),
+                self.0,
                 buf.as_mut_ptr() as *mut c_void,
                 timeout.as_secs() as u32,
             ) {
@@ -108,42 +105,29 @@ impl<T: Copy + Send> Queue<T> {
     #[inline]
     /// Gets the number of elements currently in the queue.
     pub fn waiting(&self) -> u32 {
-        unsafe { bindings::queue_get_waiting(self.queue()) }
+        unsafe { bindings::queue_get_waiting(self.0) }
     }
 
     #[inline]
     /// Gets the number of available slots in the queue (i.e., the number of
     /// elements which can be added to the queue).
     pub fn available(&self) -> u32 {
-        unsafe { bindings::queue_get_available(self.queue()) }
+        unsafe { bindings::queue_get_available(self.0) }
     }
 
     #[inline]
     /// Clears the queue (i.e., deletes all elements).
     pub fn clear(&self) {
-        unsafe { bindings::queue_reset(self.queue()) }
-    }
-
-    #[inline]
-    unsafe fn queue(&self) -> bindings::queue_t {
-        self.0 .0
+        unsafe { bindings::queue_reset(self.0) }
     }
 }
 
-impl<T: Copy + Send> Clone for Queue<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone(), PhantomData)
-    }
-}
-
-unsafe impl<T: Copy + Send> Send for Queue<T> {}
-unsafe impl<T: Copy + Send> Sync for Queue<T> {}
-
-struct QueueData(bindings::queue_t);
-
-impl Drop for QueueData {
+impl<T: Copy + Send> Drop for Queue<T> {
     #[inline]
     fn drop(&mut self) {
         unsafe { bindings::queue_delete(self.0) }
     }
 }
+
+unsafe impl<T: Copy + Send> Send for Queue<T> {}
+unsafe impl<T: Copy + Send> Sync for Queue<T> {}
