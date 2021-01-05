@@ -8,8 +8,17 @@ use crate::{
     error::{from_errno, Error},
 };
 
+use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable};
+
 /// Represents a FreeRTOS FIFO queue.
-pub struct Queue<T: Copy + Send>(bindings::queue_t, PhantomData<T>);
+///
+/// When multiple tasks are simultaneously waiting to send or receive on the
+/// same queue, there are no relative ordering guarantees.
+pub struct Queue<T: Copy + Send> {
+    queue: bindings::queue_t,
+    event: Mutex<Event>,
+    _phantom: PhantomData<T>,
+}
 
 impl<T: Copy + Send> Queue<T> {
     #[inline]
@@ -21,11 +30,15 @@ impl<T: Copy + Send> Queue<T> {
 
     /// Creates a new queue with the given length.
     pub fn try_new(length: u32) -> Result<Self, Error> {
-        let q = unsafe { bindings::queue_create(length, size_of::<T>() as u32) };
-        if q == null_mut() {
+        let queue = unsafe { bindings::queue_create(length, size_of::<T>() as u32) };
+        if queue == null_mut() {
             Err(from_errno())
         } else {
-            Ok(Self(q, PhantomData))
+            Ok(Self {
+                queue,
+                event: Mutex::try_new(Event::new())?,
+                _phantom: PhantomData,
+            })
         }
     }
 
@@ -35,11 +48,12 @@ impl<T: Copy + Send> Queue<T> {
     pub fn prepend(&self, item: T, timeout: Duration) -> Result<(), T> {
         if unsafe {
             bindings::queue_prepend(
-                self.0,
+                self.queue,
                 &item as *const T as *const c_void,
                 timeout.as_secs() as u32,
             )
         } {
+            self.event.lock().notify();
             Ok(())
         } else {
             Err(item)
@@ -52,11 +66,12 @@ impl<T: Copy + Send> Queue<T> {
     pub fn append(&self, item: T, timeout: Duration) -> Result<(), T> {
         if unsafe {
             bindings::queue_append(
-                self.0,
+                self.queue,
                 &item as *const T as *const c_void,
                 timeout.as_secs() as u32,
             )
         } {
+            self.event.lock().notify();
             Ok(())
         } else {
             Err(item)
@@ -71,7 +86,7 @@ impl<T: Copy + Send> Queue<T> {
         buf.reserve_exact(1);
         unsafe {
             if bindings::queue_peek(
-                self.0,
+                self.queue,
                 buf.as_mut_ptr() as *mut c_void,
                 timeout.as_secs() as u32,
             ) {
@@ -90,7 +105,7 @@ impl<T: Copy + Send> Queue<T> {
         buf.reserve_exact(1);
         unsafe {
             if bindings::queue_recv(
-                self.0,
+                self.queue,
                 buf.as_mut_ptr() as *mut c_void,
                 timeout.as_secs() as u32,
             ) {
@@ -105,27 +120,47 @@ impl<T: Copy + Send> Queue<T> {
     #[inline]
     /// Gets the number of elements currently in the queue.
     pub fn waiting(&self) -> u32 {
-        unsafe { bindings::queue_get_waiting(self.0) }
+        unsafe { bindings::queue_get_waiting(self.queue) }
     }
 
     #[inline]
     /// Gets the number of available slots in the queue (i.e., the number of
     /// elements which can be added to the queue).
     pub fn available(&self) -> u32 {
-        unsafe { bindings::queue_get_available(self.0) }
+        unsafe { bindings::queue_get_available(self.queue) }
     }
 
     #[inline]
     /// Clears the queue (i.e., deletes all elements).
     pub fn clear(&self) {
-        unsafe { bindings::queue_reset(self.0) }
+        unsafe { bindings::queue_reset(self.queue) }
+    }
+
+    #[inline]
+    /// Gets a [`Selectable`] event which resolves by receiving an element on
+    /// the queue when it is able to.
+    pub fn select(&self) -> impl Selectable<T> + '_ {
+        struct QueueSelect<'a, T: Copy + Send>(&'a Queue<T>, EventHandle<&'a Mutex<Event>>);
+
+        impl<'a, T: Copy + Send> Selectable<T> for QueueSelect<'a, T> {
+            #[inline]
+            fn poll(self) -> Result<T, Self> {
+                self.0.recv(Duration::default()).ok_or(self)
+            }
+            #[inline]
+            fn sleep(&self) -> GenericSleep {
+                GenericSleep::NotifyTake(None)
+            }
+        }
+
+        QueueSelect(self, handle_event(&self.event))
     }
 }
 
 impl<T: Copy + Send> Drop for Queue<T> {
     #[inline]
     fn drop(&mut self) {
-        unsafe { bindings::queue_delete(self.0) }
+        unsafe { bindings::queue_delete(self.queue) }
     }
 }
 
