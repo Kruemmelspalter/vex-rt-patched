@@ -19,7 +19,7 @@ const WHITELISTED_TYPES: &[&str] = &["motor_.*", "task_.*", "mutex_.*"];
 const RUSTIFIED_ENUMS: &[&str] = &["motor_.*", "task_.*"];
 
 // Enums to be treated as bitfields/bitflags by bindgen
-const BITFIELD_ENUMS: &[&str] = &["motor_flag_e"];
+const BITFIELD_ENUMS: &[&str] = &["motor_fault_e, motor_flag_e"];
 
 // Functions to be included by bindgen
 const WHITELISTED_FUNCS: &[&str] = &["motor_.*", "task_.*", "mutex_.*", "millis"];

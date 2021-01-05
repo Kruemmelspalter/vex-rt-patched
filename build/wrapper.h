@@ -4,3 +4,6 @@
 
 const int VEX_RT_PROS_ERR = PROS_ERR;
 const double VEX_RT_PROS_ERR_F = PROS_ERR_F;
+
+const int VEX_RT_ENXIO = ENXIO;
+const int VEX_RT_ENODEV = ENODEV;
