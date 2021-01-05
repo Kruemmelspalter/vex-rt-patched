@@ -1,20 +1,24 @@
-image: "rustlang/rust:nightly"
+image: "registry.gitlab.com/qvex/vex-rt-ci-container:latest"
+
+stages:
+  - build
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/.cargo
-  DEBIAN_FRONTEND: noninteractive
 
 before_script:
-    - apt-get update -yqq
-    - apt-get install -yqq libclang-dev
-    - apt-get install -yqq gcc-arm-none-eabi
+  - rustc --version && cargo --version  # Print version info for debugging
 
-test:cargo:
+build:
+  stage: build
   script:
-    - rustc --version && cargo --version  # Print version info for debugging
-    - cargo fmt -- --check
     - cargo build
     - cargo build --examples
   cache:
     paths:
       - .cargo
+      - target
+
+format:
+  stage: build
+  script: cargo fmt -- --check
