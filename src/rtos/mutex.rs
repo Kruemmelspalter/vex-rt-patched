@@ -6,7 +6,7 @@ use core::{
     ptr::null_mut,
 };
 
-use crate::{bindings, error::*};
+use crate::{bindings, error::*, util::owner::Owner};
 
 use super::TIMEOUT_MAX;
 
@@ -114,6 +114,20 @@ impl<T> From<T> for Mutex<T> {
     #[inline]
     fn from(data: T) -> Self {
         Self::new(data)
+    }
+}
+
+impl<T> Owner<T> for Mutex<T> {
+    fn with<U>(&self, f: impl FnOnce(&mut T) -> U) -> Option<U> {
+        let mut lock = self.try_lock().ok()?;
+        Some(f(lock.deref_mut()))
+    }
+}
+
+impl<T> Owner<T> for &Mutex<T> {
+    fn with<U>(&self, f: impl FnOnce(&mut T) -> U) -> Option<U> {
+        let mut lock = self.try_lock().ok()?;
+        Some(f(lock.deref_mut()))
     }
 }
 
