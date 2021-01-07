@@ -10,6 +10,8 @@ pub struct Motor {
 impl Motor {
     /// Constructs a new motor.
     ///
+    /// # Safety
+    ///
     /// This function is unsafe because it allows the user to create multiple
     /// mutable references to the same motor. You likely want to use
     /// [`Peripherals::take()`](crate::peripherals::Peripherals::take())

@@ -77,6 +77,13 @@ impl Peripherals {
     /// use vex_rt as rt;
     /// let peripherals = unsafe { rt::Peripherals::steal() };
     /// ```
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it allows the user to create multiple
+    /// mutable references to the V5's peripherals. You likely want to use
+    /// [`Peripherals::take()`](crate::peripherals::Peripherals::take())
+    /// instead.
     pub unsafe fn steal() -> Self {
         PERIPHERALS_TAKEN = true;
 
