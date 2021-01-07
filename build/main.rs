@@ -13,19 +13,74 @@ const PROS_ZIP_STR: &str = "build/kernel@3.3.1.zip";
 const PROS_WRAPPER_STR: &str = "build/wrapper.h";
 
 // Types to be included by bindgen
-const WHITELISTED_TYPES: &[&str] = &["motor_.*", "task_.*", "mutex_.*"];
-
-// Enums to be automatically "rustified" by bindgen
-const RUSTIFIED_ENUMS: &[&str] = &["motor_.*", "task_.*"];
+const WHITELISTED_TYPES: &[&str] = &[];
 
 // Enums to be treated as bitfields/bitflags by bindgen
-const BITFIELD_ENUMS: &[&str] = &["motor_fault_e, motor_flag_e"];
+const BITFIELD_ENUMS: &[&str] = &[];
 
 // Functions to be included by bindgen
-const WHITELISTED_FUNCS: &[&str] = &["motor_.*", "task_.*", "mutex_.*", "millis"];
+const WHITELISTED_FUNCS: &[&str] = &[
+    "millis",
+    "motor_get_actual_velocity",
+    "motor_get_brake_mode",
+    "motor_get_current_draw",
+    "motor_get_current_limit",
+    "motor_get_direction",
+    "motor_get_efficiency",
+    "motor_get_encoder_units",
+    "motor_get_gearing",
+    "motor_get_gearting",
+    "motor_get_position",
+    "motor_get_power",
+    "motor_get_target_position",
+    "motor_get_target_velocity",
+    "motor_get_temperature",
+    "motor_get_torque",
+    "motor_get_velocity",
+    "motor_get_voltage",
+    "motor_get_voltage_limit",
+    "motor_is_over_current",
+    "motor_is_over_temp",
+    "motor_is_reversed",
+    "motor_modify_profiled_velocity",
+    "motor_move",
+    "motor_move_absolute",
+    "motor_move_realitve",
+    "motor_move_relative",
+    "motor_move_velocity",
+    "motor_move_voltage",
+    "motor_set_brake_mode",
+    "motor_set_current_limit",
+    "motor_set_encoder_units",
+    "motor_set_gearing",
+    "motor_set_reversed",
+    "motor_set_voltage_limit",
+    "motor_set_zero_position",
+    "motor_tare_position",
+    "mutex_create",
+    "mutex_delete",
+    "mutex_give",
+    "mutex_take",
+    "task_create",
+    "task_delay",
+    "task_delay_until",
+    "task_delete",
+    "task_get_by_name",
+    "task_get_current",
+    "task_get_name",
+    "task_get_priority",
+    "task_get_state",
+    "task_notify",
+    "task_notify_take",
+];
 
 // Variables to be included by bindgen
-const WHITELISTED_VARS: &[&str] = &["VEX_RT_.*", ".*_DEFAULT"];
+const WHITELISTED_VARS: &[&str] = &[
+    "PROS_ERR_",
+    "PROS_ERR_F_",
+    "TASK_PRIORITY_DEFAULT",
+    "TASK_STACK_DEPTH_DEFAULT",
+];
 
 fn main() -> Result<(), io::Error> {
     // tell cargo to rerun this script if it's dependent files change
@@ -114,10 +169,6 @@ fn generate_bindings(
 
     for t in WHITELISTED_TYPES {
         bindings = bindings.whitelist_type(t);
-    }
-
-    for t in RUSTIFIED_ENUMS {
-        bindings = bindings.rustified_enum(t);
     }
 
     for t in BITFIELD_ENUMS {

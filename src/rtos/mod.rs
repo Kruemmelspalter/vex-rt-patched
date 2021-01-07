@@ -124,14 +124,15 @@ impl Task {
     /// Gets the state of the task.
     pub fn state(&self) -> TaskState {
         match unsafe { bindings::task_get_state(self.0) } {
-            bindings::task_state_e_t::E_TASK_STATE_RUNNING => TaskState::Running,
-            bindings::task_state_e_t::E_TASK_STATE_READY => TaskState::Ready,
-            bindings::task_state_e_t::E_TASK_STATE_BLOCKED => TaskState::Blocked,
-            bindings::task_state_e_t::E_TASK_STATE_SUSPENDED => TaskState::Suspended,
-            bindings::task_state_e_t::E_TASK_STATE_DELETED => TaskState::Deleted,
-            bindings::task_state_e_t::E_TASK_STATE_INVALID => {
+            bindings::task_state_e_t_E_TASK_STATE_RUNNING => TaskState::Running,
+            bindings::task_state_e_t_E_TASK_STATE_READY => TaskState::Ready,
+            bindings::task_state_e_t_E_TASK_STATE_BLOCKED => TaskState::Blocked,
+            bindings::task_state_e_t_E_TASK_STATE_SUSPENDED => TaskState::Suspended,
+            bindings::task_state_e_t_E_TASK_STATE_DELETED => TaskState::Deleted,
+            bindings::task_state_e_t_E_TASK_STATE_INVALID => {
                 panic!("invalid task handle: {:#010x}", self.0 as usize)
             }
+            x => panic!("bindings::task_get_state returned unexpected value: {}", x),
         }
     }
 

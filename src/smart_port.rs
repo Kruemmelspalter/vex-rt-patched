@@ -1,6 +1,6 @@
 //! SmartPort.
 
-use crate::motor::{Gearset, Motor};
+use crate::motor::{EncoderUnits, Gearset, Motor};
 /// A struct which represents an unconfigured smart port.
 pub struct SmartPort {
     port: u8,
@@ -35,7 +35,7 @@ impl SmartPort {
     /// let is_reversed = false;
     /// let motor01 = peripherals.port01.as_motor(gearset, is_reversed);
     /// ```
-    pub fn into_motor(self, gearset: Gearset, is_reversed: bool) -> Motor {
-        unsafe { Motor::new(self.port, gearset, is_reversed) }
+    pub fn into_motor(self, gearset: Gearset, encoder_units: EncoderUnits, reverse: bool) -> Motor {
+        unsafe { Motor::new(self.port, gearset, encoder_units, reverse) }
     }
 }
