@@ -7,7 +7,14 @@ pub struct SmartPort {
 }
 
 impl SmartPort {
-    /// Unsafely constructs a new smart port
+    /// Constructs a new smart port.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it allows the user to create multiple
+    /// mutable references to a V5 smart port. You likely want to use
+    /// [`Peripherals::take()`](crate::peripherals::Peripherals::take())
+    /// instead.
     pub unsafe fn new(port: u8) -> Self {
         assert!(
             (1..22).contains(&port),
@@ -28,7 +35,7 @@ impl SmartPort {
     /// let is_reversed = false;
     /// let motor01 = peripherals.port01.as_motor(gearset, is_reversed);
     /// ```
-    pub fn as_motor(self, gearset: Gearset, is_reversed: bool) -> Motor {
+    pub fn into_motor(self, gearset: Gearset, is_reversed: bool) -> Motor {
         unsafe { Motor::new(self.port, gearset, is_reversed) }
     }
 }
