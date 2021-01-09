@@ -47,6 +47,17 @@ impl<T: ?Sized> Mutex<T> {
     /// Obtains a [`MutexGuard`] giving access to the object protected by the
     /// mutex. Blocks until access can be obtained. Panics on failure; see
     /// [`Mutex::try_lock()`].
+    ///
+    /// # Behaviour
+    ///
+    /// This function is blocking; it does not return until the the mutex is
+    /// taken by the task, and allows other tasks to run in the meantime.
+    /// Further, the task which currently holds the mutex actually inherits the
+    /// current task's priority, if it is higher; this prevents a high-priority
+    /// task from being slowed down by waiting for a resource held by a
+    /// low-priority task. See [this documentation from
+    /// FreeRTOS](https://www.freertos.org/Real-time-embedded-RTOS-mutexes.html)
+    /// for details.
     pub fn lock(&'_ self) -> MutexGuard<'_, T> {
         self.try_lock()
             .unwrap_or_else(|err| panic!("Failed to lock mutex: {:?}", err))
@@ -54,7 +65,8 @@ impl<T: ?Sized> Mutex<T> {
 
     #[inline]
     /// Obtains a [`MutexGuard`] giving access to the object protected by the
-    /// mutex. Blocks until access can be obtained.
+    /// mutex. Blocks until access can be obtained; see [`Mutex::lock()`] for a
+    /// more thorough behavioural description.
     pub fn try_lock(&'_ self) -> Result<MutexGuard<'_, T>, Error> {
         if unsafe { bindings::mutex_take(self.mutex, TIMEOUT_MAX) } {
             Ok(MutexGuard(self))
@@ -118,6 +130,16 @@ impl<T> From<T> for Mutex<T> {
 
 /// Provides exclusive access to an object controlled by a [`Mutex`] via the
 /// RAII pattern.
+///
+/// # Behaviour
+///
+/// This object represents the current task's ownership of the mutex. As such,
+/// it explicitly does not implement the [`Send`] trait---meaning that this
+/// ownership cannot be transferred to another task---and its destructor, via
+/// the [`Drop`] trait, ensures that the mutex is released when the object goes
+/// out of scope. Rust's object and reference lifetime rules prevent safe code
+/// from retaining access to the [`Mutex`] object's internal data beyond the
+/// lifetime of the guard object.
 pub struct MutexGuard<'a, T: ?Sized>(&'a Mutex<T>);
 
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
