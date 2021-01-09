@@ -1,7 +1,13 @@
 use core::marker::PhantomData;
 
 pub trait Owner<T> {
-    fn with<U>(&self, f: impl FnOnce(&mut T) -> U) -> Option<U>;
+    fn with<U>(&self, f: impl for<'a> FnOnce(&'a mut T) -> U) -> Option<U>;
+}
+
+impl<T, O: Owner<T>> Owner<T> for &O {
+    fn with<U>(&self, f: impl FnOnce(&mut T) -> U) -> Option<U> {
+        (*self).with(f)
+    }
 }
 
 #[inline]

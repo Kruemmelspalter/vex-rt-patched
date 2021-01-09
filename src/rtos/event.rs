@@ -32,6 +32,13 @@ impl Default for Event {
 /// When this handle is dropped, that task is removed from the event's set.
 pub struct EventHandle<O: Owner<Event>>(Option<SharedSetHandle<Task, EventHandleOwner<O>>>);
 
+impl<O: Owner<Event>> EventHandle<O> {
+    /// Calls a given function on the underlying owner, if it exists.
+    pub fn with_owner<U>(&self, f: impl FnOnce(&O) -> U) -> Option<U> {
+        Some(f(&self.0.as_ref()?.owner().0))
+    }
+}
+
 struct EventHandleOwner<O: Owner<Event>>(O);
 
 impl<O: Owner<Event>> Owner<SharedSet<Task>> for EventHandleOwner<O> {

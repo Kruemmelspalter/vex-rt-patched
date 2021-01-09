@@ -30,7 +30,7 @@ macro_rules! select {
         $crate::select_body!{loop {
             $crate::rtos::GenericSleep::sleep($crate::select_sleep!(events; $($event,)+));
             events = $crate::select_match!{events; |r| r; $($event,)+};
-        }; $($var => $body,)+}
+        }; $($var => {$body},)+}
     }};
 }
 
