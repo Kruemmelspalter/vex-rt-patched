@@ -29,6 +29,19 @@ pub struct SharedSetHandle<T: Ord + Clone, O: Owner<SharedSet<T>>> {
     value: T,
 }
 
+impl<T: Ord + Clone, O: Owner<SharedSet<T>>> SharedSetHandle<T, O> {
+    #[inline]
+    pub fn owner(&self) -> &O {
+        &self.owner
+    }
+
+    #[inline]
+    #[allow(dead_code)]
+    pub fn value(&self) -> &T {
+        &self.value
+    }
+}
+
 impl<T: Ord + Clone, O: Owner<SharedSet<T>>> Drop for SharedSetHandle<T, O> {
     #[inline]
     fn drop(&mut self) {
