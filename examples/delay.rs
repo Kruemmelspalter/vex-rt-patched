@@ -11,15 +11,13 @@ impl Robot for DelayBot {
     fn initialize() -> Self {
         Self
     }
-    fn autonomous(&self, _: Context) {}
-    fn opcontrol(&self, _: Context) {
+    fn opcontrol(&'static self, _ctx: Context) {
         let x: u32 = 0;
         loop {
             println!("x = {}", x);
             Task::delay(Duration::from_secs(1));
         }
     }
-    fn disabled(&self, _: Context) {}
 }
 
 entry!(DelayBot);

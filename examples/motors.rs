@@ -62,19 +62,19 @@ impl Robot for ClawBot {
         ClawBot::new(p)
     }
 
-    fn autonomous(&self, _ctx: Context) {
+    fn autonomous(&'static self, _ctx: Context) {
         println!("autonomous");
         let mut drive_train = self.drive_train.lock();
         drive_train.spin();
     }
 
-    fn opcontrol(&self, _ctx: Context) {
+    fn opcontrol(&'static self, _ctx: Context) {
         println!("opcontrol");
         let mut drive_train = self.drive_train.lock();
         drive_train.stop();
     }
 
-    fn disabled(&self, _ctx: Context) {
+    fn disabled(&'static self, _ctx: Context) {
         println!("disabled");
         let mut drive_train = self.drive_train.lock();
         drive_train.stop();

@@ -13,7 +13,7 @@ impl Robot for SelectRobot {
     fn initialize() -> Self {
         Self
     }
-    fn autonomous(&self, ctx: Context) {
+    fn autonomous(&'static self, ctx: Context) {
         println!("autonomous");
         let mut x = 0;
         let mut l = Loop::new(Duration::from_secs(1));
@@ -26,12 +26,6 @@ impl Robot for SelectRobot {
             }
         }
         println!("auto done")
-    }
-    fn opcontrol(&self, _: Context) {
-        println!("opcontrol");
-    }
-    fn disabled(&self, _: Context) {
-        println!("disabled");
     }
 }
 

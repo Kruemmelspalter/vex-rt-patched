@@ -12,10 +12,7 @@ impl Robot for TaskBot {
     fn initialize() -> Self {
         TaskBot
     }
-    fn autonomous(&self, _: Context) {
-        println!("autonomous");
-    }
-    fn opcontrol(&self, _: Context) {
+    fn opcontrol(&'static self, _ctx: Context) {
         println!("opcontrol");
         let promise = Promise::spawn(|| {
             Task::delay(Duration::from_secs(1));
@@ -27,9 +24,6 @@ impl Robot for TaskBot {
                 n = promise.done() => n,
             }
         );
-    }
-    fn disabled(&self, _: Context) {
-        println!("disabled");
     }
 }
 

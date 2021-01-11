@@ -11,16 +11,10 @@
 ///
 /// struct FooBot;
 ///
-/// impl FooBot {
+/// impl Robot for FooBot {
 ///     fn initialize() -> Self {
 ///         FooBot
 ///     }
-/// }
-///
-/// impl Robot for FooBot {
-///     fn autonomous(&self, ctx: Context) {}
-///     fn opcontrol(&self, ctx: Context) {}
-///     fn disabled(&self, ctx: Context) {}
 /// }
 ///
 /// entry!(FooBot);
@@ -32,12 +26,13 @@ macro_rules! entry {
 
         #[no_mangle]
         unsafe extern "C" fn initialize() {
-            ROBOT.call_once(|| {
+            let (robot, _) = ROBOT.call_once(|| {
                 (
-                    <$robot_type>::initialize(),
+                    $crate::robot::Robot::initialize(),
                     $crate::robot::ContextWrapper::new(),
                 )
             });
+            $crate::robot::Robot::post_initialize(robot);
         }
 
         #[no_mangle]
