@@ -9,9 +9,6 @@ impl Robot for PanicBot {
     fn initialize() -> Self {
         panic!("Panic Message")
     }
-    fn autonomous(&self, _: Context) {}
-    fn opcontrol(&self, _: Context) {}
-    fn disabled(&self, _: Context) {}
 }
 
 entry!(PanicBot);

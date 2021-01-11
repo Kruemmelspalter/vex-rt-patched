@@ -28,15 +28,6 @@ impl Robot for TaskBot {
         .unwrap();
         TaskBot
     }
-    fn autonomous(&self, _: Context) {
-        println!("autonomous");
-    }
-    fn opcontrol(&self, _: Context) {
-        println!("opcontrol");
-    }
-    fn disabled(&self, _: Context) {
-        println!("disabled");
-    }
 }
 
 entry!(TaskBot);
