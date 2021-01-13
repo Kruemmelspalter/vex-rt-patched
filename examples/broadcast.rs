@@ -14,12 +14,12 @@ struct BroadcastBot {
 }
 
 impl Robot for BroadcastBot {
-    fn initialize() -> Self {
+    fn new(_peripherals: Peripherals) -> Self {
         Self {
             bcast: Broadcast::new(0),
         }
     }
-    fn post_initialize(&'static self) {
+    fn initialize(&'static self) {
         let mut x = 0;
         let mut l = Loop::new(Duration::from_secs(1));
         Task::spawn(move || loop {

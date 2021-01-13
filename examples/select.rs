@@ -10,7 +10,7 @@ use vex_rt::select;
 struct SelectRobot;
 
 impl Robot for SelectRobot {
-    fn initialize() -> Self {
+    fn new(_peripherals: Peripherals) -> Self {
         Self
     }
     fn autonomous(&'static self, ctx: Context) {
