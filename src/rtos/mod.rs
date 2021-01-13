@@ -2,8 +2,11 @@
 
 use alloc::{boxed::Box, format, string::String};
 use core::{
-    fmt::{self, Debug, Formatter},
+    cmp::min,
+    convert::TryInto,
+    fmt::{self, Debug, Display, Formatter},
     marker::PhantomData,
+    ops::{Add, Div, Mul, Sub},
     time::Duration,
 };
 
@@ -11,10 +14,151 @@ use crate::{bindings, error::*, util::*};
 
 const TIMEOUT_MAX: u32 = 0xffffffff;
 
+/// Represents a time on a monotonically increasing clock (i.e., time since
+/// program start).
+///
+/// This type has a precision of 1 millisecond.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Instant(u32);
+
+impl Instant {
+    #[inline]
+    /// Creates a new `Instant` from the specified number of whole milliseconds
+    /// since program start.
+    pub fn from_millis(millis: u32) -> Self {
+        Self(millis)
+    }
+
+    /// Creates a new `Instant` from the specified number of whole seconds since
+    /// program start.
+    pub fn from_secs(secs: u32) -> Self {
+        Self(
+            secs.checked_mul(1000)
+                .expect("overflow when creating instant from seconds"),
+        )
+    }
+
+    #[inline]
+    /// Returns the number of *whole* seconds since program start contained by
+    /// this `Instant`.
+    ///
+    /// The returned value does not include the fractional (milliseconds) part
+    /// of the time value.
+    pub fn as_millis(&self) -> u32 {
+        self.0
+    }
+
+    #[inline]
+    /// Returns the number of whole milliseconds since program start contained
+    /// by this `Instant`.
+    pub fn as_secs(&self) -> u32 {
+        self.0 / 1000
+    }
+
+    #[inline]
+    /// Returns the fractional part of this `Instant`, in whole milliseconds.
+    ///
+    /// This method does **not** return the time value in milliseconds. The
+    /// returned number always represents a fractional portion of a second
+    /// (i.e., it is less than one thousand).
+    pub fn subsec_millis(&self) -> u32 {
+        self.0 % 1000
+    }
+
+    #[inline]
+    /// Checked addition of a [`Duration`] to an `Instant`. Computes `self +
+    /// rhs`, returning [`None`] if overflow occured.
+    pub fn checked_add(self, rhs: Duration) -> Option<Self> {
+        Some(Self(self.0.checked_add(rhs.as_millis().try_into().ok()?)?))
+    }
+
+    #[inline]
+    /// Checked subtraction of a [`Duration`] from an `Instant`. Computes
+    /// `self - rhs`, returning [`None`] if the result would be negative or
+    /// overflow occured.
+    pub fn checked_sub(self, rhs: Duration) -> Option<Instant> {
+        Some(Self(self.0.checked_sub(rhs.as_millis().try_into().ok()?)?))
+    }
+
+    #[inline]
+    /// Checked subtraction of two `Instant`s. Computes `self - rhs`, returning
+    /// [`None`] if the result would be negative or overflow occured.
+    pub fn checked_sub_instant(self, rhs: Self) -> Option<Duration> {
+        Some(Duration::from_millis(self.0.checked_sub(rhs.0)?.into()))
+    }
+
+    #[inline]
+    /// Checked multiplication of an `Instant` by a scalar. Computes `self *
+    /// rhs`, returning [`None`] if an overflow occured.
+    pub fn checked_mul(self, rhs: u32) -> Option<Instant> {
+        Some(Self(self.0.checked_mul(rhs)?))
+    }
+}
+
+impl Add<Duration> for Instant {
+    type Output = Instant;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        self.checked_add(rhs)
+            .expect("overflow when adding duration to instant")
+    }
+}
+
+impl Sub<Duration> for Instant {
+    type Output = Instant;
+
+    fn sub(self, rhs: Duration) -> Self::Output {
+        self.checked_sub(rhs)
+            .expect("overflow when subtracting duration from instant")
+    }
+}
+
+impl Sub for Instant {
+    type Output = Duration;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.checked_sub_instant(rhs)
+            .expect("overflow when subtracting instants")
+    }
+}
+
+impl Mul<u32> for Instant {
+    type Output = Instant;
+
+    fn mul(self, rhs: u32) -> Self::Output {
+        self.checked_mul(rhs)
+            .expect("overflow when multiplying instant by scalar")
+    }
+}
+
+impl Div<u32> for Instant {
+    type Output = Instant;
+
+    #[inline]
+    fn div(self, rhs: u32) -> Self::Output {
+        Self(self.0 / rhs)
+    }
+}
+
+impl Debug for Instant {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{:03} s", self.0 / 1000, self.0 % 1000)
+    }
+}
+
+impl Display for Instant {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{:03} s", self.0 / 1000, self.0 % 1000)
+    }
+}
+
+#[inline]
 /// Gets the current timestamp (i.e., the time which has passed since program
 /// start).
-pub fn time_since_start() -> Duration {
-    unsafe { Duration::from_millis(bindings::millis().into()) }
+pub fn time_since_start() -> Instant {
+    unsafe { Instant::from_millis(bindings::millis()) }
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -180,9 +324,9 @@ pub enum TaskState {
 pub enum GenericSleep {
     /// Represents a future time when a notification occurs. If a timestamp is
     /// present, then it represents whichever is earlier.
-    NotifyTake(Option<Duration>),
+    NotifyTake(Option<Instant>),
     /// Represents an explicit future timestamp.
-    Timestamp(Duration),
+    Timestamp(Instant),
 }
 
 impl GenericSleep {
@@ -193,13 +337,13 @@ impl GenericSleep {
         match self {
             GenericSleep::NotifyTake(timeout) => {
                 let timeout = timeout.map_or(TIMEOUT_MAX, |v| {
-                    v.checked_sub(time_since_start())
+                    v.checked_sub_instant(time_since_start())
                         .map_or(0, |d| d.as_millis() as u32)
                 });
                 unsafe { bindings::task_notify_take(true, timeout) }
             }
             GenericSleep::Timestamp(v) => {
-                if let Some(d) = v.checked_sub(time_since_start()) {
+                if let Some(d) = v.checked_sub_instant(time_since_start()) {
                     Task::delay(d)
                 }
                 0
@@ -209,7 +353,7 @@ impl GenericSleep {
 
     #[inline]
     /// Get the timestamp represented by `self`, if it is present.
-    pub fn timeout(self) -> Option<Duration> {
+    pub fn timeout(self) -> Option<Instant> {
         match self {
             GenericSleep::NotifyTake(v) => v,
             GenericSleep::Timestamp(v) => Some(v),
@@ -223,9 +367,10 @@ impl GenericSleep {
             (GenericSleep::Timestamp(a), GenericSleep::Timestamp(b)) => {
                 GenericSleep::Timestamp(core::cmp::min(a, b))
             }
-            (a, b) => GenericSleep::NotifyTake(a.timeout().map_or(b.timeout(), |a| {
-                Some(b.timeout().map_or(a, |b| core::cmp::min(a, b)))
-            })),
+            (a, b) => GenericSleep::NotifyTake(
+                a.timeout()
+                    .map_or(b.timeout(), |a| Some(b.timeout().map_or(a, |b| min(a, b)))),
+            ),
         }
     }
 }

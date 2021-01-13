@@ -2,8 +2,10 @@ use core::time::Duration;
 
 use crate::{
     bindings,
-    rtos::{GenericSleep, Selectable},
+    rtos::{GenericSleep, Instant, Selectable},
 };
+
+use super::time_since_start;
 
 /// Provides a constant-period looping construct.
 pub struct Loop {
@@ -16,7 +18,7 @@ impl Loop {
     /// Creates a new loop object with a given period.
     pub fn new(delta: Duration) -> Self {
         Loop {
-            last_time: unsafe { bindings::millis() },
+            last_time: time_since_start().as_millis(),
             delta: delta.as_millis() as u32,
         }
     }
@@ -42,9 +44,7 @@ impl Loop {
                 }
             }
             fn sleep(&self) -> GenericSleep {
-                GenericSleep::Timestamp(Duration::from_millis(
-                    (self.0.last_time + self.0.delta).into(),
-                ))
+                GenericSleep::Timestamp(Instant::from_millis(self.0.last_time + self.0.delta))
             }
         }
 
