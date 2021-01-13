@@ -47,19 +47,11 @@ struct ClawBot {
     drive_train: Mutex<DriveTrain>,
 }
 
-impl ClawBot {
+impl Robot for ClawBot {
     fn new(peripherals: Peripherals) -> Self {
         Self {
             drive_train: Mutex::new(DriveTrain::new(peripherals.port01, peripherals.port02)),
         }
-    }
-}
-
-impl Robot for ClawBot {
-    fn initialize() -> Self {
-        println!("initialize");
-        let p = Peripherals::take().unwrap();
-        ClawBot::new(p)
     }
 
     fn autonomous(&'static self, _ctx: Context) {

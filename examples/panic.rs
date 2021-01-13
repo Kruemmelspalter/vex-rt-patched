@@ -6,7 +6,7 @@ use vex_rt::prelude::*;
 struct PanicBot;
 
 impl Robot for PanicBot {
-    fn initialize() -> Self {
+    fn new(_peripherals: Peripherals) -> Self {
         panic!("Panic Message")
     }
 }

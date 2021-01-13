@@ -9,7 +9,7 @@ use vex_rt::rtos::{Loop, Task};
 struct TaskBot;
 
 impl Robot for TaskBot {
-    fn initialize() -> Self {
+    fn new(_peripherals: Peripherals) -> Self {
         let mut x = 0;
         let mut l = Loop::new(Duration::from_secs(1));
         Task::spawn_ext(

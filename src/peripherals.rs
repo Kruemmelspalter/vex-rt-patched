@@ -48,45 +48,16 @@ pub struct Peripherals {
     pub port21: SmartPort,
 }
 
-static mut PERIPHERALS_TAKEN: bool = false;
-
 impl Peripherals {
-    /// Constructs a [`Peripherals`] struct once.
-    ///
-    /// **Warning:** Panics if called multiple times.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use vex_rt as rt;
-    /// let peripherals = rt::Peripherals::take();
-    /// ```
-    pub fn take() -> Option<Self> {
-        if unsafe { PERIPHERALS_TAKEN } {
-            None
-        } else {
-            Some(unsafe { Self::steal() })
-        }
-    }
-
     /// Constructs a [`Peripherals`] struct unsafely.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use vex_rt as rt;
-    /// let peripherals = unsafe { rt::Peripherals::steal() };
-    /// ```
     ///
     /// # Safety
     ///
     /// This function is unsafe because it allows the user to create multiple
-    /// mutable references to the V5's peripherals. You likely want to use
-    /// [`Peripherals::take()`](crate::peripherals::Peripherals::take())
-    /// instead.
-    pub unsafe fn steal() -> Self {
-        PERIPHERALS_TAKEN = true;
-
+    /// mutable references to the V5's peripherals. You likely want to use the
+    /// peripherals object passed into
+    /// [`Robot::initialize`](crate::robot::Robot::initialize()) instead.
+    pub unsafe fn new() -> Self {
         Peripherals {
             port01: SmartPort::new(1),
             port02: SmartPort::new(2),

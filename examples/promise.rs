@@ -9,7 +9,7 @@ use vex_rt::{prelude::*, select};
 struct TaskBot;
 
 impl Robot for TaskBot {
-    fn initialize() -> Self {
+    fn new(_peripherals: Peripherals) -> Self {
         TaskBot
     }
     fn opcontrol(&'static self, _ctx: Context) {

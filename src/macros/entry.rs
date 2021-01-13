@@ -7,12 +7,12 @@
 /// #![no_std]
 /// #![no_main]
 ///
-/// use vex_rt::{entry, Robot};
+/// use vex_rt::prelude::*;
 ///
 /// struct FooBot;
 ///
 /// impl Robot for FooBot {
-///     fn initialize() -> Self {
+///     fn new(_p: Peripherals) -> Self {
 ///         FooBot
 ///     }
 /// }
@@ -26,13 +26,14 @@ macro_rules! entry {
 
         #[no_mangle]
         unsafe extern "C" fn initialize() {
+            let peripherals = unsafe { $crate::peripherals::Peripherals::new() };
             let (robot, _) = ROBOT.call_once(|| {
                 (
-                    $crate::robot::Robot::initialize(),
+                    $crate::robot::Robot::new(peripherals),
                     $crate::robot::ContextWrapper::new(),
                 )
             });
-            $crate::robot::Robot::post_initialize(robot);
+            $crate::robot::Robot::initialize(robot);
         }
 
         #[no_mangle]

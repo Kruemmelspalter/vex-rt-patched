@@ -1,15 +1,18 @@
 //! For use with the [`entry`] macro.
 
-use crate::rtos::{Context, Mutex};
+use crate::{
+    peripherals::Peripherals,
+    rtos::{Context, Mutex},
+};
 use libc_print::std_name::*;
 
 /// A trait representing a competition-ready VEX Robot.
 pub trait Robot {
-    /// Runs at startup. This should be non-blocking, since the FreeRTOS
-    /// scheduler doesn't start until it returns.
-    fn initialize() -> Self;
+    /// Runs at startup, contstructing your robot. This should be non-blocking,
+    /// since the FreeRTOS scheduler doesn't start until it returns.
+    fn new(peripherals: Peripherals) -> Self;
 
-    /// Runs immediately after [`Robot::initialize`]. This should be
+    /// Runs immediately after [`Robot::new`]. This should be
     /// non-blocking, since the FreeRTOS scheduler doesn't start until it
     /// returns.
     ///
@@ -19,7 +22,7 @@ pub trait Robot {
     /// object is guaranteed to be static (i.e., forever), and so the
     /// implementation may pass references around (e.g., to new tasks) at will
     /// without issue.
-    fn post_initialize(&'static self) {}
+    fn initialize(&'static self) {}
 
     /// Runs during the autonomous period.
     fn autonomous(&'static self, _ctx: Context) {

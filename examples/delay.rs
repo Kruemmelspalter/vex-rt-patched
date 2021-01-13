@@ -8,7 +8,7 @@ use vex_rt::rtos::Task;
 struct DelayBot;
 
 impl Robot for DelayBot {
-    fn initialize() -> Self {
+    fn new(_peripherals: Peripherals) -> Self {
         Self
     }
     fn opcontrol(&'static self, _ctx: Context) {
