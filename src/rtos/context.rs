@@ -1,14 +1,16 @@
 use alloc::sync::{Arc, Weak};
 use core::{cmp::min, time::Duration};
 
-use super::{handle_event, time_since_start, Event, EventHandle, GenericSleep, Mutex, Selectable};
+use super::{
+    handle_event, time_since_start, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable,
+};
 use crate::util::{
     ord_weak::OrdWeak,
     owner::Owner,
     shared_set::{insert, SharedSet, SharedSetHandle},
 };
 
-type ContextValue = (Option<Duration>, Mutex<Option<ContextData>>);
+type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
 
 #[derive(Clone)]
 /// Represents an ongoing operation which could be cancelled in the future.
@@ -59,7 +61,7 @@ impl Context {
     /// Forks a context. Equivalent to [`Context::fork()`], except that the new
     /// context has a deadline which is the earlier of the one in `self` and
     /// the one provided.
-    pub fn fork_with_deadline(&self, deadline: Duration) -> Self {
+    pub fn fork_with_deadline(&self, deadline: Instant) -> Self {
         self.fork_internal(Some(self.0 .0.map_or(deadline, |d| min(d, deadline))))
     }
 
@@ -100,7 +102,7 @@ impl Context {
         ContextSelect(self, handle_event(ContextHandle(Arc::downgrade(&self.0))))
     }
 
-    fn fork_internal(&self, deadline: Option<Duration>) -> Self {
+    fn fork_internal(&self, deadline: Option<Instant>) -> Self {
         let ctx = Self(Arc::new((deadline, Mutex::new(None))));
         let parent_handle = insert(
             ContextHandle(Arc::downgrade(&self.0)),
