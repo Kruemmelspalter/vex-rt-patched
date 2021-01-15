@@ -34,3 +34,7 @@ clippy:
 format:
   stage: build
   script: cargo fmt -- --check
+
+doc:
+  stage: build
+  script: cargo doc
