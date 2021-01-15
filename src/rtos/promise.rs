@@ -2,10 +2,9 @@ use core::cell::UnsafeCell;
 
 use alloc::sync::{Arc, Weak};
 
-use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable, Task};
-use crate::{error::Error, util::owner::Owner};
+use super::{handle_event, Context, Event, EventHandle, GenericSleep, Mutex, Selectable, Task};
+use crate::{error::Error, select, util::owner::Owner};
 
-#[derive(Clone)]
 /// Represents an ongoing operation which produces a result.
 pub struct Promise<T: 'static = ()>(Arc<Mutex<PromiseData<T>>>);
 
@@ -89,6 +88,55 @@ impl<T: Send + Sync + 'static> Promise<T> {
         let (promise, resolve) = Self::new();
         Task::spawn(|| resolve(f()))?;
         Ok(promise)
+    }
+
+    #[inline]
+    /// Spawns a new promise which, upon the completion of `self`, runs `f`.
+    pub fn then<U: Send + Sync + 'static>(
+        &self,
+        f: impl FnOnce(&T) -> U + Send + 'static,
+    ) -> Promise<U> {
+        let upstream = self.clone();
+        Promise::spawn(move || {
+            select! {
+                v = upstream.done() => f(v),
+            }
+        })
+    }
+
+    #[inline]
+    /// Spawns a new promise which, upon the completion of `self`, runs `f`. If
+    /// `ctx` is cancelled before `self` completes, the result is `default`.
+    pub fn then_or<U: Send + Sync + 'static>(
+        &self,
+        ctx: Context,
+        default: U,
+        f: impl FnOnce(&T) -> U + Send + 'static,
+    ) -> Promise<U> {
+        let upstream = self.clone();
+        Promise::spawn(move || {
+            select! {
+                v = upstream.done() => f(v),
+                _ = ctx.done() => default,
+            }
+        })
+    }
+
+    #[inline]
+    /// Spawns a new promise which, upon the completion of `self`, runs `f`. If
+    /// `ctx` is cancelled before `self` completes, the result is `None`.
+    pub fn then_some<U: Send + Sync + 'static>(
+        &self,
+        ctx: Context,
+        f: impl FnOnce(&T) -> U + Send + 'static,
+    ) -> Promise<Option<U>> {
+        self.then_or(ctx, None, |v| Some(f(v)))
+    }
+}
+
+impl<T: 'static> Clone for Promise<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 
