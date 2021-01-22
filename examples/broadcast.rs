@@ -19,7 +19,7 @@ impl Robot for BroadcastBot {
             bcast: Broadcast::new(0),
         }
     }
-    fn initialize(&'static self) {
+    fn initialize(&'static self, _ctx: Context) {
         let mut x = 0;
         let mut l = Loop::new(Duration::from_secs(1));
         Task::spawn(move || loop {

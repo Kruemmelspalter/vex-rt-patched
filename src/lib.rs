@@ -16,6 +16,7 @@ mod error;
 mod util;
 
 pub mod io;
+pub mod machine;
 pub mod macros;
 pub mod motor;
 pub mod peripherals;

@@ -161,3 +161,33 @@ impl Owner<SharedSet<OrdWeak<ContextValue>>> for ContextHandle {
 fn cancel(m: &Mutex<Option<ContextData>>) {
     m.lock().take();
 }
+
+/// Provides a wrapper for [`Context`] objects which permits the management of
+/// sequential, non-overlapping contexts.
+pub struct ContextWrapper(Option<Context>);
+
+impl ContextWrapper {
+    #[inline]
+    /// Creates a new `ContextWrapper` objects.
+    pub fn new() -> Self {
+        Self(None)
+    }
+
+    /// Cancels the last context, creating a new global context in its place
+    /// (which is returned).
+    pub fn replace(&mut self) -> Context {
+        if let Some(ctx) = self.0.take() {
+            ctx.cancel();
+        }
+        let ctx = Context::new_global();
+        self.0 = Some(ctx.clone());
+        ctx
+    }
+}
+
+impl Default for ContextWrapper {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
