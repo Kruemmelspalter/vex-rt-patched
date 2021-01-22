@@ -21,55 +21,60 @@
 /// ```
 macro_rules! entry {
     ($robot_type:ty) => {
-        static ROBOT: $crate::once::Once<($robot_type, $crate::robot::ContextWrapper)> =
-            $crate::once::Once::new();
+        static ROBOT: $crate::once::Once<($robot_type, Competition)> = $crate::once::Once::new();
 
         #[no_mangle]
         unsafe extern "C" fn initialize() {
-            let peripherals = unsafe { $crate::peripherals::Peripherals::new() };
-            let (robot, _) = ROBOT.call_once(|| {
+            ROBOT.call_once(|| {
                 (
-                    $crate::robot::Robot::new(peripherals),
-                    $crate::robot::ContextWrapper::new(),
+                    $crate::robot::Robot::new(unsafe { $crate::peripherals::Peripherals::new() }),
+                    Competition::new(),
                 )
             });
-            $crate::robot::Robot::initialize(robot);
         }
 
         #[no_mangle]
         extern "C" fn opcontrol() {
-            let (robot, wrapper) = ROBOT.get().unwrap();
-            $crate::rtos::Task::spawn_ext(
-                "opcontrol",
-                $crate::rtos::Task::DEFAULT_PRIORITY,
-                $crate::rtos::Task::DEFAULT_STACK_DEPTH,
-                move || $crate::robot::Robot::opcontrol(robot, wrapper.replace()),
-            )
-            .unwrap();
+            ROBOT.get().unwrap().1.opcontrol();
         }
 
         #[no_mangle]
         extern "C" fn autonomous() {
-            let (robot, wrapper) = ROBOT.get().unwrap();
-            $crate::rtos::Task::spawn_ext(
-                "autonomous",
-                $crate::rtos::Task::DEFAULT_PRIORITY,
-                $crate::rtos::Task::DEFAULT_STACK_DEPTH,
-                move || $crate::robot::Robot::autonomous(robot, wrapper.replace()),
-            )
-            .unwrap();
+            ROBOT.get().unwrap().1.autonomous();
         }
 
         #[no_mangle]
         extern "C" fn disabled() {
-            let (robot, wrapper) = ROBOT.get().unwrap();
-            $crate::rtos::Task::spawn_ext(
-                "disabled",
-                $crate::rtos::Task::DEFAULT_PRIORITY,
-                $crate::rtos::Task::DEFAULT_STACK_DEPTH,
-                move || $crate::robot::Robot::disabled(robot, wrapper.replace()),
-            )
-            .unwrap();
+            ROBOT.get().unwrap().1.disabled();
+        }
+
+        $crate::state_machine! {
+            /// State machine for the competition modes.
+            pub Competition = initialize();
+
+            #[inline]
+            /// Initialization stage of the robot.
+            initialize(ctx) {
+                $crate::robot::Robot::initialize(&ROBOT.get().unwrap().0, ctx);
+            }
+
+            #[inline]
+            /// Driver control period.
+            opcontrol(ctx) {
+                $crate::robot::Robot::opcontrol(&ROBOT.get().unwrap().0, ctx);
+            }
+
+            #[inline]
+            /// Autonomous period.
+            autonomous(ctx) {
+                $crate::robot::Robot::autonomous(&ROBOT.get().unwrap().0, ctx);
+            }
+
+            #[inline]
+            /// Disabled period.
+            disabled(ctx) {
+                $crate::robot::Robot::disabled(&ROBOT.get().unwrap().0, ctx);
+            }
         }
     };
 }
