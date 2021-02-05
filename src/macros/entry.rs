@@ -25,27 +25,32 @@ macro_rules! entry {
 
         #[no_mangle]
         unsafe extern "C" fn initialize() {
-            ROBOT.call_once(|| {
-                (
-                    $crate::robot::Robot::new(unsafe { $crate::peripherals::Peripherals::new() }),
-                    Competition::new(),
-                )
-            });
+            $crate::rtos::Task::spawn(|| {
+                ROBOT.call_once(|| {
+                    (
+                        $crate::robot::Robot::new(unsafe {
+                            $crate::peripherals::Peripherals::new()
+                        }),
+                        Competition::new(),
+                    )
+                });
+            })
+            .expect("failed to launch task for initialize()");
         }
 
         #[no_mangle]
         extern "C" fn opcontrol() {
-            ROBOT.get().unwrap().1.opcontrol();
+            ROBOT.wait().1.opcontrol();
         }
 
         #[no_mangle]
         extern "C" fn autonomous() {
-            ROBOT.get().unwrap().1.autonomous();
+            ROBOT.wait().1.autonomous();
         }
 
         #[no_mangle]
         extern "C" fn disabled() {
-            ROBOT.get().unwrap().1.disabled();
+            ROBOT.wait().1.disabled();
         }
 
         $crate::state_machine! {
@@ -55,25 +60,25 @@ macro_rules! entry {
             #[inline]
             /// Initialization stage of the robot.
             initialize(ctx) {
-                $crate::robot::Robot::initialize(&ROBOT.get().unwrap().0, ctx);
+                $crate::robot::Robot::initialize(&ROBOT.wait().0, ctx);
             }
 
             #[inline]
             /// Driver control period.
             opcontrol(ctx) {
-                $crate::robot::Robot::opcontrol(&ROBOT.get().unwrap().0, ctx);
+                $crate::robot::Robot::opcontrol(&ROBOT.wait().0, ctx);
             }
 
             #[inline]
             /// Autonomous period.
             autonomous(ctx) {
-                $crate::robot::Robot::autonomous(&ROBOT.get().unwrap().0, ctx);
+                $crate::robot::Robot::autonomous(&ROBOT.wait().0, ctx);
             }
 
             #[inline]
             /// Disabled period.
             disabled(ctx) {
-                $crate::robot::Robot::disabled(&ROBOT.get().unwrap().0, ctx);
+                $crate::robot::Robot::disabled(&ROBOT.wait().0, ctx);
             }
         }
     };
