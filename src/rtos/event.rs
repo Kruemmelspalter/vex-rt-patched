@@ -33,6 +33,14 @@ impl Default for Event {
 pub struct EventHandle<O: Owner<Event>>(Option<SharedSetHandle<Task, EventHandleOwner<O>>>);
 
 impl<O: Owner<Event>> EventHandle<O> {
+    /// Returns `true` if the event handle is orphaned, i.e. the parent event
+    /// object no longer exists.
+    pub fn is_done(&self) -> bool {
+        self.with_owner(|_| ()).is_none()
+    }
+}
+
+impl<O: Owner<Event>> EventHandle<O> {
     /// Calls a given function on the underlying owner, if it exists.
     pub fn with_owner<U>(&self, f: impl FnOnce(&O) -> U) -> Option<U> {
         Some(f(&self.0.as_ref()?.owner().0))

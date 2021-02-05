@@ -2,7 +2,9 @@ use core::cell::UnsafeCell;
 
 use alloc::sync::{Arc, Weak};
 
-use super::{handle_event, Context, Event, EventHandle, GenericSleep, Mutex, Selectable, Task};
+use super::{
+    handle_event, Context, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable, Task,
+};
 use crate::{error::Error, select, util::owner::Owner};
 
 /// Represents an ongoing operation which produces a result.
@@ -43,7 +45,7 @@ impl<T: 'static> Promise<T> {
     pub fn done(&'_ self) -> impl Selectable<&'_ T> + '_ {
         struct PromiseSelect<'a, T: 'static> {
             promise: &'a Promise<T>,
-            _handle: EventHandle<PromiseHandle<T>>,
+            handle: EventHandle<PromiseHandle<T>>,
         };
 
         impl<'a, T> Selectable<&'a T> for PromiseSelect<'a, T> {
@@ -62,13 +64,17 @@ impl<T: 'static> Promise<T> {
             }
             #[inline]
             fn sleep(&self) -> GenericSleep {
-                GenericSleep::NotifyTake(None)
+                if self.handle.is_done() {
+                    GenericSleep::Timestamp(Instant::from_millis(0))
+                } else {
+                    GenericSleep::NotifyTake(None)
+                }
             }
         }
 
         PromiseSelect {
             promise: self,
-            _handle: handle_event(PromiseHandle(Arc::downgrade(&self.0))),
+            handle: handle_event(PromiseHandle(Arc::downgrade(&self.0))),
         }
     }
 }

@@ -60,7 +60,7 @@ macro_rules! state_machine {
         $vis struct $name($crate::rtos::Mutex<Data>);
 
         impl $name {
-            fn new($($($iname: $itype),+)?) -> Self {
+            pub fn new($($($iname: $itype),+)?) -> Self {
                 let (promise, resolve) = $crate::rtos::Promise::new();
                 $(
                     $(
@@ -74,11 +74,14 @@ macro_rules! state_machine {
                         )+
                     )?
                 });
-                Self($crate::rtos::Mutex::new(Data {
-                    state: State::$init($($arg),*),
+                let state = State::$init($($arg),*);
+                let r = Self($crate::rtos::Mutex::new(Data {
+                    state: ::core::clone::Clone::clone(&state),
                     promise,
                     ctxw: $crate::rtos::ContextWrapper::new(),
-                }))
+                }));
+                $crate::machine::StateMachine::transition(&r, state);
+                r
             }
 
             $(
@@ -86,6 +89,7 @@ macro_rules! state_machine {
                 pub fn $state(&self, $($pname: $ptype),*) -> $crate::rtos::Promise $(<$fret>)? {
                     let mut lock = self.0.lock();
                     let ctx = lock.ctxw.replace();
+                    lock.state = State::$state($(::core::clone::Clone::clone($pname)),*);
                     let promise = lock.promise.then(move |vars: &Vars| {
                         let mut vars = ::core::clone::Clone::clone(vars);
                         let r = vars.$state(ctx, $($pname),*);
