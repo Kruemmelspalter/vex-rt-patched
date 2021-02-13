@@ -14,11 +14,17 @@ impl Event {
         Event(SharedSet::new())
     }
 
-    /// Notify the tasks which are waiting for an event.
+    /// Notify the tasks which are waiting for the event.
     pub fn notify(&self) {
         for t in self.0.iter() {
             unsafe { bindings::task_notify(t.0) };
         }
+    }
+
+    #[inline]
+    /// Gets the number of tasks currently waiting for the event.
+    pub fn task_count(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -38,12 +44,16 @@ impl<O: Owner<Event>> EventHandle<O> {
     pub fn is_done(&self) -> bool {
         self.with_owner(|_| ()).is_none()
     }
-}
 
-impl<O: Owner<Event>> EventHandle<O> {
     /// Calls a given function on the underlying owner, if it exists.
     pub fn with_owner<U>(&self, f: impl FnOnce(&O) -> U) -> Option<U> {
         Some(f(&self.0.as_ref()?.owner().0))
+    }
+
+    /// Nullifies the handle. This has the same effect as dropping it or
+    /// destroying the parent event object.
+    pub fn clear(&mut self) {
+        self.0.take();
     }
 }
 

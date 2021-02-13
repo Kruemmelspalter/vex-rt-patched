@@ -451,15 +451,19 @@ pub fn select_either<'a, T: 'a>(
 }
 
 mod broadcast;
+mod channel;
 mod context;
 mod event;
 mod r#loop;
 mod mutex;
 mod promise;
+mod semaphore;
 
 pub use broadcast::*;
+pub use channel::*;
 pub use context::*;
 pub use event::*;
 pub use mutex::*;
 pub use promise::*;
 pub use r#loop::*;
+pub use semaphore::*;
