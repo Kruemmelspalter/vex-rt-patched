@@ -9,7 +9,7 @@ use crate::{bindings, error::*};
 
 use super::TIMEOUT_MAX;
 
-/// Represents an object which is protected by a FreeRTOS mutex.
+/// Represents an object which is protected by a FreeRTOS recursive mutex.
 pub struct Mutex<T: ?Sized> {
     mutex: bindings::mutex_t,
     data: UnsafeCell<T>,
@@ -30,7 +30,7 @@ impl<T> Mutex<T> {
 
     /// Creates a new mutex which wraps the given object.
     pub fn try_new(data: T) -> Result<Self, Error> {
-        let mutex = unsafe { bindings::mutex_create() };
+        let mutex = unsafe { bindings::mutex_recursive_create() };
         if mutex.is_null() {
             Err(from_errno())
         } else {
@@ -68,7 +68,7 @@ impl<T: ?Sized> Mutex<T> {
     /// mutex. Blocks until access can be obtained; see [`Mutex::lock()`] for a
     /// more thorough behavioural description.
     pub fn try_lock(&'_ self) -> Result<MutexGuard<'_, T>, Error> {
-        if unsafe { bindings::mutex_take(self.mutex, TIMEOUT_MAX) } {
+        if unsafe { bindings::mutex_recursive_take(self.mutex, TIMEOUT_MAX) } {
             Ok(MutexGuard(self))
         } else {
             Err(from_errno())
@@ -79,7 +79,7 @@ impl<T: ?Sized> Mutex<T> {
     /// Obtains a [`MutexGuard`] giving access to the object protected by the
     /// mutex, if it is available immediately. Does not block.
     pub fn poll(&'_ self) -> Option<MutexGuard<'_, T>> {
-        if unsafe { bindings::mutex_take(self.mutex, 0) } {
+        if unsafe { bindings::mutex_recursive_take(self.mutex, 0) } {
             Some(MutexGuard(self))
         } else {
             None
@@ -161,7 +161,7 @@ impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
 impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
-        if !unsafe { bindings::mutex_give(self.0.mutex) } {
+        if !unsafe { bindings::mutex_recursive_give(self.0.mutex) } {
             panic!("failed to return mutex: {:?}", from_errno());
         }
     }
