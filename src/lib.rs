@@ -23,6 +23,7 @@ pub mod peripherals;
 pub mod prelude;
 pub mod robot;
 pub mod rtos;
+pub mod serial;
 pub mod smart_port;
 
 #[doc(hidden)]
