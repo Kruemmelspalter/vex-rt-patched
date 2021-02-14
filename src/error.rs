@@ -2,9 +2,12 @@
 
 use alloc::format;
 use alloc::string::*;
-use core::fmt::{self, Debug, Display, Formatter};
+use core::{
+    fmt::{self, Debug, Display, Formatter},
+    num::TryFromIntError,
+};
 
-use crate::util::from_cstring_raw;
+use crate::{bindings, util::from_cstring_raw};
 
 /// Represents a runtime error.
 pub enum Error {
@@ -19,6 +22,12 @@ pub enum Error {
 
 impl From<rcstring::Error> for Error {
     fn from(err: rcstring::Error) -> Self {
+        Error::Custom(format!("{:?}", err))
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(err: TryFromIntError) -> Self {
         Error::Custom(format!("{:?}", err))
     }
 }
@@ -46,6 +55,36 @@ impl Display for Error {
         match self {
             Error::System(n) => Display::fmt(unsafe { &from_cstring_raw(libc::strerror(*n)) }, f),
             Error::Custom(s) => Display::fmt(s, f),
+        }
+    }
+}
+
+/// Represents a type which has some sentinel values which represent errors.
+///
+/// Implementations are provided for `i32` and `f64` based on PROS's sentinel
+/// error values, represented by `PROS_ERR` and `PROS_ERR_F` in C/C++.
+pub trait SentinelError: Sized {
+    /// Checks if the type is a valid (success value), giving an appropriate
+    /// error otherwise.
+    fn check(self) -> Result<Self, Error>;
+}
+
+impl SentinelError for i32 {
+    fn check(self) -> Result<Self, Error> {
+        if self == bindings::PROS_ERR_ {
+            Err(from_errno())
+        } else {
+            Ok(self)
+        }
+    }
+}
+
+impl SentinelError for f64 {
+    fn check(self) -> Result<Self, Error> {
+        if self == bindings::PROS_ERR_F_ {
+            Err(from_errno())
+        } else {
+            Ok(self)
         }
     }
 }

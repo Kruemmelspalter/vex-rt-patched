@@ -13,8 +13,8 @@ impl Motor {
     /// # Safety
     ///
     /// This function is unsafe because it allows the user to create multiple
-    /// mutable references to the same motor. You likely want to use
-    /// [`Peripherals::take()`](crate::peripherals::Peripherals::take())
+    /// mutable references to the same motor. You likely want to implement
+    /// [`Robot::new()`](crate::robot::Robot::new()) instead.
     /// instead.
     pub unsafe fn new(
         port: u8,
