@@ -4,10 +4,6 @@
 use core::time::Duration;
 
 use vex_rt::prelude::*;
-use vex_rt::{
-    rtos::{Broadcast, Loop, Task},
-    select,
-};
 
 struct BroadcastBot {
     bcast: Broadcast<i32>,

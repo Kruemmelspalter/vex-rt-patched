@@ -1,15 +1,7 @@
 #![no_std]
 #![no_main]
 
-use vex_rt::{
-    self, entry,
-    io::println,
-    motor::{EncoderUnits, Gearset, Motor},
-    peripherals::Peripherals,
-    robot::Robot,
-    rtos::{Context, Mutex},
-    smart_port::SmartPort,
-};
+use vex_rt::prelude::*;
 
 struct DriveTrain {
     left_drive: Motor,

@@ -3,7 +3,6 @@
 
 use core::time::Duration;
 use vex_rt::prelude::*;
-use vex_rt::rtos::Task;
 
 struct DelayBot;
 

@@ -1,7 +1,8 @@
 //! For use with the [`entry`] macro.
 
-use crate::{peripherals::Peripherals, rtos::Context};
 use libc_print::std_name::*;
+
+use crate::{peripherals::Peripherals, rtos::Context};
 
 /// A trait representing a competition-ready VEX Robot.
 pub trait Robot {

@@ -4,6 +4,7 @@ pub use crate::entry;
 pub use crate::select;
 
 pub use crate::controller::*;
+pub use crate::error::*;
 pub use crate::io::*;
 pub use crate::machine::*;
 pub use crate::motor::*;

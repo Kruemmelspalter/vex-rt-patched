@@ -10,7 +10,11 @@ use core::{
     time::Duration,
 };
 
-use crate::{bindings, error::*, util::*};
+use crate::{
+    bindings,
+    error::{Error, SentinelError},
+    util::cstring::{as_cstring, from_cstring_raw},
+};
 
 const TIMEOUT_MAX: u32 = 0xffffffff;
 
@@ -241,14 +245,12 @@ impl Task {
         arg: *mut libc::c_void,
     ) -> Result<Task, Error> {
         as_cstring(name, |cname| {
-            let task = unsafe {
-                bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw())
-            };
-            if task.is_null() {
-                Err(from_errno())
-            } else {
-                Ok(Task(task))
-            }
+            Ok(Task(
+                unsafe {
+                    bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw())
+                }
+                .check()?,
+            ))
         })
     }
 

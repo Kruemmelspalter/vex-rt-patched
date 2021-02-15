@@ -3,8 +3,7 @@
 
 use core::time::Duration;
 
-use vex_rt::rtos::{Promise, Task};
-use vex_rt::{prelude::*, select};
+use vex_rt::prelude::*;
 
 struct TaskBot;
 
