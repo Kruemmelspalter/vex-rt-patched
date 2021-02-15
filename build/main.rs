@@ -20,6 +20,8 @@ const BITFIELD_ENUMS: &[&str] = &[];
 
 // Functions to be included by bindgen
 const WHITELISTED_FUNCS: &[&str] = &[
+    "controller_get_analog",
+    "controller_get_digital",
     "millis",
     "motor_get_actual_velocity",
     "motor_get_brake_mode",

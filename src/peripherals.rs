@@ -1,9 +1,16 @@
 //! Peripherals.
 
-use crate::smart_port::SmartPort;
+use crate::{
+    controller::{Controller, ControllerId},
+    smart_port::SmartPort,
+};
 
 /// A struct which represents all the peripherals on the V5 brain.
 pub struct Peripherals {
+    /// Primary Controller.
+    pub master_controller: Controller,
+    /// Partner Controller.
+    pub partner_controller: Controller,
     /// Smart Port 1
     pub port01: SmartPort,
     /// Smart Port 2
@@ -59,6 +66,8 @@ impl Peripherals {
     /// [`Robot::initialize`](crate::robot::Robot::initialize()) instead.
     pub unsafe fn new() -> Self {
         Peripherals {
+            master_controller: Controller::new(ControllerId::Master),
+            partner_controller: Controller::new(ControllerId::Partner),
             port01: SmartPort::new(1),
             port02: SmartPort::new(2),
             port03: SmartPort::new(3),
