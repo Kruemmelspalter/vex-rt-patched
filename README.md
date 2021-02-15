@@ -17,3 +17,9 @@ you will need:
 # Simply plug in a V5 and run:
 cargo run --example hello-world
 ```
+
+## Versions
+
+| Versions starting with... | ...use PROS kernel version... |
+| ------------------------- | ----------------------------- |
+| 0.1.0                     | 3.3.1                         |
