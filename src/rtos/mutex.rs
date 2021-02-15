@@ -30,15 +30,10 @@ impl<T> Mutex<T> {
 
     /// Creates a new mutex which wraps the given object.
     pub fn try_new(data: T) -> Result<Self, Error> {
-        let mutex = unsafe { bindings::mutex_recursive_create() };
-        if mutex.is_null() {
-            Err(from_errno())
-        } else {
-            Ok(Self {
-                data: UnsafeCell::new(data),
-                mutex,
-            })
-        }
+        Ok(Self {
+            data: UnsafeCell::new(data),
+            mutex: unsafe { bindings::mutex_recursive_create() }.check()?,
+        })
     }
 }
 

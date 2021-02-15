@@ -1,6 +1,9 @@
 //! # Motor API.
 
-use crate::{bindings, error::get_errno};
+use crate::{
+    bindings,
+    error::{get_errno, Error},
+};
 
 /// A struct which represents a V5 smart port configured as a motor.
 pub struct Motor {
@@ -378,6 +381,16 @@ impl MotorError {
             libc::ENXIO => Self::PortOutOfRange,
             libc::ENODEV => Self::PortNotMotor,
             x => Self::Unknown(x),
+        }
+    }
+}
+
+impl From<MotorError> for Error {
+    fn from(err: MotorError) -> Self {
+        match err {
+            MotorError::PortOutOfRange => Error::Custom("port out of range".into()),
+            MotorError::PortNotMotor => Error::Custom("port not a motor".into()),
+            MotorError::Unknown(n) => Error::System(n),
         }
     }
 }

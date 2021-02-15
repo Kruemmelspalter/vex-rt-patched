@@ -4,6 +4,7 @@ use crate::{
     motor::{EncoderUnits, Gearset, Motor},
     serial::Serial,
 };
+
 /// A struct which represents an unconfigured smart port.
 pub struct SmartPort {
     port: u8,

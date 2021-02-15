@@ -7,7 +7,7 @@ use core::{
     num::TryFromIntError,
 };
 
-use crate::{bindings, util::from_cstring_raw};
+use crate::{bindings, util::cstring::from_cstring_raw};
 
 /// Represents a runtime error.
 pub enum Error {
@@ -82,6 +82,16 @@ impl SentinelError for i32 {
 impl SentinelError for f64 {
     fn check(self) -> Result<Self, Error> {
         if self == bindings::PROS_ERR_F_ {
+            Err(from_errno())
+        } else {
+            Ok(self)
+        }
+    }
+}
+
+impl<T> SentinelError for *mut T {
+    fn check(self) -> Result<Self, Error> {
+        if self.is_null() {
             Err(from_errno())
         } else {
             Ok(self)

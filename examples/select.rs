@@ -4,8 +4,6 @@
 use core::time::Duration;
 
 use vex_rt::prelude::*;
-use vex_rt::rtos::Loop;
-use vex_rt::select;
 
 struct SelectRobot;
 

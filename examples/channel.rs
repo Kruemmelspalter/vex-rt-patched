@@ -3,11 +3,7 @@
 
 use core::time::Duration;
 
-use vex_rt::{
-    prelude::*,
-    rtos::{channel, Loop, ReceiveChannel, Task},
-    select,
-};
+use vex_rt::prelude::*;
 
 struct ChannelBot {
     chan: ReceiveChannel<i32>,

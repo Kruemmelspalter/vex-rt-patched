@@ -1,8 +1,8 @@
-use core::time::Duration;
+use core::{convert::TryInto, time::Duration};
 
 use crate::{
     bindings,
-    error::{from_errno, Error},
+    error::{from_errno, Error, SentinelError},
 };
 
 /// Represents a FreeRTOS counting semaphore.
@@ -18,12 +18,9 @@ impl Semaphore {
 
     /// Creates a new semaphore.
     pub fn try_new(max_count: u32, init_count: u32) -> Result<Self, Error> {
-        let sem = unsafe { bindings::sem_create(max_count, init_count) };
-        if sem.is_null() {
-            Err(from_errno())
-        } else {
-            Ok(Self(sem))
-        }
+        Ok(Self(
+            unsafe { bindings::sem_create(max_count, init_count) }.check()?,
+        ))
     }
 
     #[inline]
@@ -31,7 +28,7 @@ impl Semaphore {
     /// (i.e., its count decremented). If the semaphore cannot be taken (due
     /// to timeout or other reason), an error is returned.
     pub fn wait(&self, timeout: Duration) -> Result<(), Error> {
-        if unsafe { bindings::sem_wait(self.0, timeout.as_millis() as u32) } {
+        if unsafe { bindings::sem_wait(self.0, timeout.as_millis().try_into()?) } {
             Ok(())
         } else {
             Err(from_errno())

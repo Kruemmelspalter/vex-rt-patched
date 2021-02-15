@@ -1,11 +1,8 @@
 use core::time::Duration;
 
-use crate::{
-    bindings,
-    rtos::{GenericSleep, Instant, Selectable},
-};
+use crate::bindings;
 
-use super::time_since_start;
+use super::{time_since_start, GenericSleep, Instant, Selectable};
 
 /// Provides a constant-period looping construct.
 pub struct Loop {
