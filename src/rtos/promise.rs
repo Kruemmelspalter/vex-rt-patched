@@ -46,7 +46,7 @@ impl<T: 'static> Promise<T> {
         struct PromiseSelect<'a, T: 'static> {
             promise: &'a Promise<T>,
             handle: EventHandle<PromiseHandle<T>>,
-        };
+        }
 
         impl<'a, T> Selectable<&'a T> for PromiseSelect<'a, T> {
             fn poll(self) -> Result<&'a T, Self> {

@@ -67,7 +67,7 @@ impl<'a, T: Clone> BroadcastListener<'a, T> {
         struct BroadcastSelect<'b, T: Clone> {
             data: &'b mut Weak<T>,
             handle: EventHandle<&'b Mutex<BroadcastData<T>>>,
-        };
+        }
 
         impl<'b, T: Clone> Selectable<T> for BroadcastSelect<'b, T> {
             #[inline]

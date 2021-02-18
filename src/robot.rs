@@ -6,7 +6,7 @@ use crate::{peripherals::Peripherals, rtos::Context};
 
 /// A trait representing a competition-ready VEX Robot.
 pub trait Robot {
-    /// Runs at startup, contstructing your robot. This should be non-blocking,
+    /// Runs at startup, constructing your robot. This should be non-blocking,
     /// since the FreeRTOS scheduler doesn't start until it returns.
     fn new(peripherals: Peripherals) -> Self;
 
