@@ -71,7 +71,7 @@ impl Instant {
 
     #[inline]
     /// Checked addition of a [`Duration`] to an `Instant`. Computes `self +
-    /// rhs`, returning [`None`] if overflow occured.
+    /// rhs`, returning [`None`] if overflow occurred.
     pub fn checked_add(self, rhs: Duration) -> Option<Self> {
         Some(Self(self.0.checked_add(rhs.as_millis().try_into().ok()?)?))
     }
@@ -79,21 +79,21 @@ impl Instant {
     #[inline]
     /// Checked subtraction of a [`Duration`] from an `Instant`. Computes
     /// `self - rhs`, returning [`None`] if the result would be negative or
-    /// overflow occured.
+    /// overflow occurred.
     pub fn checked_sub(self, rhs: Duration) -> Option<Instant> {
         Some(Self(self.0.checked_sub(rhs.as_millis().try_into().ok()?)?))
     }
 
     #[inline]
     /// Checked subtraction of two `Instant`s. Computes `self - rhs`, returning
-    /// [`None`] if the result would be negative or overflow occured.
+    /// [`None`] if the result would be negative or overflow occurred.
     pub fn checked_sub_instant(self, rhs: Self) -> Option<Duration> {
         Some(Duration::from_millis(self.0.checked_sub(rhs.0)?.into()))
     }
 
     #[inline]
     /// Checked multiplication of an `Instant` by a scalar. Computes `self *
-    /// rhs`, returning [`None`] if an overflow occured.
+    /// rhs`, returning [`None`] if an overflow occurred.
     pub fn checked_mul(self, rhs: u32) -> Option<Instant> {
         Some(Self(self.0.checked_mul(rhs)?))
     }
@@ -332,7 +332,7 @@ pub enum GenericSleep {
 }
 
 impl GenericSleep {
-    /// Sleeps until the future time respresented by `self`. The result is the
+    /// Sleeps until the future time represented by `self`. The result is the
     /// number of notifications which were present, if the sleep ended due to
     /// notification.
     pub fn sleep(self) -> u32 {

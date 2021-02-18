@@ -1,8 +1,8 @@
-use std::env;
-use std::io;
-use std::path::PathBuf;
-use std::process;
-use std::str;
+use std::{
+    env, io,
+    path::{Path, PathBuf},
+    process, str,
+};
 
 use zip_extensions::zip_extract;
 
@@ -128,7 +128,7 @@ fn main() -> Result<(), io::Error> {
 }
 
 /// detects system include paths for `arm-none-eabi` and pros.
-fn get_includes(pros_extract_path: &PathBuf) -> Vec<String> {
+fn get_includes(pros_extract_path: &Path) -> Vec<String> {
     // https://stackoverflow.com/questions/17939930/finding-out-what-the-gcc-include-path-is
     let output = process::Command::new("arm-none-eabi-gcc")
         .args(&["-E", "-Wp,-v", "-xc", "/dev/null"])
@@ -170,8 +170,8 @@ fn get_includes(pros_extract_path: &PathBuf) -> Vec<String> {
 /// Generates bindings using bindgen.
 fn generate_bindings(
     includes: &[String],
-    wrapper_h_path: &PathBuf,
-    bindings_gen_path: &PathBuf,
+    wrapper_h_path: &Path,
+    bindings_gen_path: &Path,
 ) -> Result<(), io::Error> {
     let mut bindings = bindgen::Builder::default()
         .header(wrapper_h_path.to_str().unwrap())

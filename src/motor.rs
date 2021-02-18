@@ -405,12 +405,12 @@ pub enum BrakeMode {
     Hold,
 }
 
-impl Into<bindings::motor_brake_mode_e> for BrakeMode {
-    fn into(self) -> bindings::motor_brake_mode_e {
-        match self {
-            Self::Coast => bindings::motor_brake_mode_e_E_MOTOR_BRAKE_COAST,
-            Self::Brake => bindings::motor_brake_mode_e_E_MOTOR_BRAKE_BRAKE,
-            Self::Hold => bindings::motor_brake_mode_e_E_MOTOR_BRAKE_HOLD,
+impl From<BrakeMode> for bindings::motor_brake_mode_e {
+    fn from(mode: BrakeMode) -> Self {
+        match mode {
+            BrakeMode::Coast => bindings::motor_brake_mode_e_E_MOTOR_BRAKE_COAST,
+            BrakeMode::Brake => bindings::motor_brake_mode_e_E_MOTOR_BRAKE_BRAKE,
+            BrakeMode::Hold => bindings::motor_brake_mode_e_E_MOTOR_BRAKE_HOLD,
         }
     }
 }
@@ -425,12 +425,12 @@ pub enum Gearset {
     ThirtySixToOne,
 }
 
-impl Into<bindings::motor_gearset_e> for Gearset {
-    fn into(self) -> bindings::motor_gearset_e {
-        match self {
-            Self::SixToOne => bindings::motor_gearset_e_E_MOTOR_GEARSET_06,
-            Self::EighteenToOne => bindings::motor_gearset_e_E_MOTOR_GEARSET_18,
-            Self::ThirtySixToOne => bindings::motor_gearset_e_E_MOTOR_GEARSET_36,
+impl From<Gearset> for bindings::motor_gearset_e {
+    fn from(gearset: Gearset) -> Self {
+        match gearset {
+            Gearset::SixToOne => bindings::motor_gearset_e_E_MOTOR_GEARSET_06,
+            Gearset::EighteenToOne => bindings::motor_gearset_e_E_MOTOR_GEARSET_18,
+            Gearset::ThirtySixToOne => bindings::motor_gearset_e_E_MOTOR_GEARSET_36,
         }
     }
 }
@@ -443,9 +443,9 @@ pub enum Direction {
     Negative,
 }
 
-/// Represets the possible encoder units
+/// Represents the possible encoder units
 pub enum EncoderUnits {
-    /// The number of tcks of the internal motor encoder.
+    /// The number of ticks of the internal motor encoder.
     /// - 300 ticks/rev with [`Gearset::SixToOne`]
     /// - 900 ticks/rev with [`Gearset::EighteenToOne`]
     /// - 1800 ticks/rev with [`Gearset::ThirtySixToOne`]
@@ -456,12 +456,12 @@ pub enum EncoderUnits {
     Rotations,
 }
 
-impl Into<bindings::motor_encoder_units_e> for EncoderUnits {
-    fn into(self) -> bindings::motor_encoder_units_e {
-        match self {
-            Self::EncoderTicks => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_COUNTS,
-            Self::Degrees => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_DEGREES,
-            Self::Rotations => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_ROTATIONS,
+impl From<EncoderUnits> for bindings::motor_encoder_units_e {
+    fn from(units: EncoderUnits) -> Self {
+        match units {
+            EncoderUnits::EncoderTicks => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_COUNTS,
+            EncoderUnits::Degrees => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_DEGREES,
+            EncoderUnits::Rotations => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_ROTATIONS,
         }
     }
 }

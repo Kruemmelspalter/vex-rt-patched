@@ -172,15 +172,15 @@ impl Button {
 pub enum ControllerId {
     /// The primary controller.
     Master,
-    /// The teathered/partner controller.
+    /// The tethered/partner controller.
     Partner,
 }
 
-impl Into<bindings::controller_id_e_t> for ControllerId {
-    fn into(self) -> bindings::controller_id_e_t {
-        match self {
-            Self::Master => bindings::controller_id_e_t_E_CONTROLLER_MASTER,
-            Self::Partner => bindings::controller_id_e_t_E_CONTROLLER_PARTNER,
+impl From<ControllerId> for bindings::controller_id_e_t {
+    fn from(id: ControllerId) -> Self {
+        match id {
+            ControllerId::Master => bindings::controller_id_e_t_E_CONTROLLER_MASTER,
+            ControllerId::Partner => bindings::controller_id_e_t_E_CONTROLLER_PARTNER,
         }
     }
 }
