@@ -386,8 +386,8 @@ pub trait Selectable<T = ()>: Sized {
     fn sleep(&self) -> GenericSleep;
 }
 
-/// Creates a new [`Selectable`] event by mapping the result of a given one.
 #[inline]
+/// Creates a new [`Selectable`] event by mapping the result of a given one.
 pub fn select_map<'a, T: 'a, U: 'a, F: 'a + FnOnce(T) -> U>(
     event: impl Selectable<T> + 'a,
     f: F,
@@ -421,9 +421,9 @@ pub fn select_map<'a, T: 'a, U: 'a, F: 'a + FnOnce(T) -> U>(
     }
 }
 
+#[inline]
 /// Creates a new [`Selectable`] event which processes exactly one of the given
 /// events.
-#[inline]
 pub fn select_either<'a, T: 'a>(
     fst: impl Selectable<T> + 'a,
     snd: impl Selectable<T> + 'a,
@@ -450,6 +450,34 @@ pub fn select_either<'a, T: 'a>(
     }
 
     EitherSelect(fst, snd, PhantomData)
+}
+
+#[inline]
+/// Creates a new [`Selectable`] event which completes after the given duration
+/// of time.
+pub fn delay(time: Duration) -> impl Selectable {
+    delay_until(time_since_start() + time)
+}
+
+#[inline]
+/// Creates a new [`Selectable`] event which completes at the given timestamp.
+pub fn delay_until(timestamp: Instant) -> impl Selectable {
+    struct DelaySelect(Instant);
+
+    impl Selectable for DelaySelect {
+        fn poll(self) -> Result<(), Self> {
+            if time_since_start() >= self.0 {
+                Ok(())
+            } else {
+                Err(self)
+            }
+        }
+        fn sleep(&self) -> GenericSleep {
+            GenericSleep::Timestamp(self.0)
+        }
+    }
+
+    DelaySelect(timestamp)
 }
 
 mod broadcast;
