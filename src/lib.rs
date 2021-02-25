@@ -15,6 +15,7 @@ mod bindings;
 mod error;
 mod util;
 
+pub mod adi;
 pub mod controller;
 pub mod io;
 pub mod machine;
