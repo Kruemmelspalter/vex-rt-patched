@@ -22,6 +22,10 @@ const BITFIELD_ENUMS: &[&str] = &[];
 const WHITELISTED_FUNCS: &[&str] = &[
     "controller_get_analog",
     "controller_get_digital",
+    "ext_adi_encoder_get",
+    "ext_adi_encoder_init",
+    "ext_adi_encoder_reset",
+    "ext_adi_encoder_shutdown",
     "millis",
     "motor_get_actual_velocity",
     "motor_get_brake_mode",
@@ -91,6 +95,7 @@ const WHITELISTED_FUNCS: &[&str] = &[
 
 // Variables to be included by bindgen
 const WHITELISTED_VARS: &[&str] = &[
+    "INTERNAL_ADI_PORT",
     "PROS_ERR_",
     "PROS_ERR_F_",
     "TASK_PRIORITY_DEFAULT",

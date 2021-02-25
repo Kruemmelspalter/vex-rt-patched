@@ -1,5 +1,6 @@
 //! SmartPort.
 
+use crate::adi::AdiExpander;
 use crate::{
     motor::{EncoderUnits, Gearset, Motor},
     serial::Serial,
@@ -35,5 +36,11 @@ impl SmartPort {
     /// Converts a `SmartPort` into a [`Serial`].
     pub fn into_serial(self, baudrate: i32) -> Serial {
         unsafe { Serial::new(self.port, baudrate) }
+    }
+
+    /// Converts a `SmartPort` into a
+    /// [`AdiExpander`](crate::adi::expander::AdiExpander).
+    pub fn into_expander(self) -> AdiExpander {
+        unsafe { AdiExpander::new(self.port) }
     }
 }

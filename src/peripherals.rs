@@ -1,6 +1,8 @@
 //! Peripherals.
 
+use crate::adi::AdiPort;
 use crate::{
+    bindings,
     controller::{Controller, ControllerId},
     smart_port::SmartPort,
 };
@@ -53,6 +55,22 @@ pub struct Peripherals {
     pub port20: SmartPort,
     /// Smart Port 21
     pub port21: SmartPort,
+    /// ADI Port 1 / A
+    pub port_a: AdiPort,
+    /// ADI Port 2 / B
+    pub port_b: AdiPort,
+    /// ADI Port 3 / C
+    pub port_c: AdiPort,
+    /// ADI Port 4 / D
+    pub port_d: AdiPort,
+    /// ADI Port 5 / E
+    pub port_e: AdiPort,
+    /// ADI Port 6 / F
+    pub port_f: AdiPort,
+    /// ADI Port 7 / G
+    pub port_g: AdiPort,
+    /// ADI Port 8 / H
+    pub port_h: AdiPort,
 }
 
 impl Peripherals {
@@ -89,6 +107,14 @@ impl Peripherals {
             port19: SmartPort::new(19),
             port20: SmartPort::new(20),
             port21: SmartPort::new(21),
+            port_a: AdiPort::new(1, bindings::INTERNAL_ADI_PORT as u8),
+            port_b: AdiPort::new(2, bindings::INTERNAL_ADI_PORT as u8),
+            port_c: AdiPort::new(3, bindings::INTERNAL_ADI_PORT as u8),
+            port_d: AdiPort::new(4, bindings::INTERNAL_ADI_PORT as u8),
+            port_e: AdiPort::new(5, bindings::INTERNAL_ADI_PORT as u8),
+            port_f: AdiPort::new(6, bindings::INTERNAL_ADI_PORT as u8),
+            port_g: AdiPort::new(7, bindings::INTERNAL_ADI_PORT as u8),
+            port_h: AdiPort::new(8, bindings::INTERNAL_ADI_PORT as u8),
         }
     }
 }
