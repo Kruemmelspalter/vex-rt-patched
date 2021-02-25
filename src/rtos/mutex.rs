@@ -1,7 +1,6 @@
 use core::{
     cell::UnsafeCell,
-    fmt,
-    fmt::{Debug, Display, Formatter},
+    fmt::{self, Debug, Display, Formatter},
     ops::{Deref, DerefMut},
 };
 

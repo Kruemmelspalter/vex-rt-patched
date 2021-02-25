@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
@@ -19,6 +19,6 @@ rcstring = "0.2.1"
 spin = "0.7.0"
 
 [build-dependencies]
-bindgen = "0.53.1"
+bindgen = "0.57.0"
 zip = "0.5.9"
 zip-extensions = "0.6.0"
