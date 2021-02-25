@@ -1,9 +1,8 @@
+use alloc::{format, string::*};
 use core::ptr;
+use rcstring::CString;
 
 use crate::error::*;
-use alloc::format;
-use alloc::string::*;
-use rcstring::CString;
 
 #[inline]
 pub fn as_cstring<V, T, F>(v: V, f: F) -> Result<T, Error>

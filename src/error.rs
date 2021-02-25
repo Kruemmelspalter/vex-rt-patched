@@ -1,7 +1,6 @@
 //! Error
 
-use alloc::format;
-use alloc::string::*;
+use alloc::{format, string::*};
 use core::{
     fmt::{self, Debug, Display, Formatter},
     num::TryFromIntError,
