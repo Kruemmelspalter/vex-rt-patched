@@ -33,7 +33,7 @@ pub use spin::once;
 
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
-    crate::io::eprintln!("panic occurred!: {:?}", panic_info);
+    crate::io::eprintln!("panic occurred!: {:#?}", panic_info);
 
     unsafe {
         libc::exit(1);

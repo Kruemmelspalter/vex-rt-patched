@@ -19,8 +19,12 @@ impl Serial {
     /// mutable references to the same smart port interface. You likely want to
     /// implement [`Robot::new()`](crate::robot::Robot::new()) instead.
     pub unsafe fn new(port: u8, baudrate: i32) -> Self {
-        Self::try_new(port, baudrate)
-            .unwrap_or_else(|err| panic!("failed to create generic serial port: {}", err))
+        Self::try_new(port, baudrate).unwrap_or_else(|err| {
+            panic!(
+                "failed to create generic serial port {} with baudrate {}: {}",
+                port, baudrate, err
+            )
+        })
     }
 
     /// Constructs a new generic serial port.
