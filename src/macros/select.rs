@@ -98,9 +98,11 @@ macro_rules! select_sleep {
 /// contextual expressions such as `break`, `continue` and `return` are not
 /// valid.
 macro_rules! select_merge {
-    { $( $var:pat = $event:expr => $body:expr ),+ $(,)? } => {
-        $crate::select_any!($($crate::rtos::select_map($event, |$var| $body)),+)
-    };
+    { $( $var:pat = $event:expr => $body:expr ),+ $(,)? } => {{
+        #[allow(clippy::redundant_closure)]
+        let r = $crate::select_any!($($crate::rtos::select_map($event, |$var| $body)),+);
+        r
+    }};
 }
 
 #[macro_export]

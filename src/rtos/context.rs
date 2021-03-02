@@ -4,10 +4,13 @@ use core::{cmp::min, time::Duration};
 use super::{
     handle_event, time_since_start, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable,
 };
-use crate::util::{
-    ord_weak::OrdWeak,
-    owner::Owner,
-    shared_set::{insert, SharedSet, SharedSetHandle},
+use crate::{
+    select_merge,
+    util::{
+        ord_weak::OrdWeak,
+        owner::Owner,
+        shared_set::{insert, SharedSet, SharedSetHandle},
+    },
 };
 
 type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
@@ -100,6 +103,19 @@ impl Context {
         }
 
         ContextSelect(self, handle_event(ContextHandle(Arc::downgrade(&self.0))))
+    }
+
+    /// Creates a [`Selectable`] event which occurs when either the given
+    /// `event` resolves, or when the context is cancelled, whichever occurs
+    /// first.
+    pub fn wrap<'a, T: 'a>(
+        &'a self,
+        event: impl Selectable<T> + 'a,
+    ) -> impl Selectable<Option<T>> + 'a {
+        select_merge! {
+            r = event => Some(r),
+            _ = self.done() => None,
+        }
     }
 
     fn fork_internal(&self, deadline: Option<Instant>) -> Self {
