@@ -23,21 +23,32 @@ const TIMEOUT_MAX: u32 = 0xffffffff;
 ///
 /// This type has a precision of 1 millisecond.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Instant(u32);
+pub struct Instant(u64);
 
 impl Instant {
     #[inline]
+    /// Creates a new `Instant` from the specified number of *whole*
+    /// microseconds since program start.
+    pub fn from_micros(micros: u64) -> Self {
+        Self(micros)
+    }
+
+    #[inline]
     /// Creates a new `Instant` from the specified number of whole milliseconds
     /// since program start.
-    pub fn from_millis(millis: u32) -> Self {
-        Self(millis)
+    pub fn from_millis(millis: u64) -> Self {
+        Self(
+            millis
+                .checked_mul(1000)
+                .expect("overflow when creating instant from seconds"),
+        )
     }
 
     /// Creates a new `Instant` from the specified number of whole seconds since
     /// program start.
-    pub fn from_secs(secs: u32) -> Self {
+    pub fn from_secs(secs: u64) -> Self {
         Self(
-            secs.checked_mul(1000)
+            secs.checked_mul(1000000)
                 .expect("overflow when creating instant from seconds"),
         )
     }
@@ -48,32 +59,49 @@ impl Instant {
     ///
     /// The returned value does not include the fractional (milliseconds) part
     /// of the time value.
-    pub fn as_millis(&self) -> u32 {
-        self.0
-    }
-
-    #[inline]
-    /// Returns the number of whole milliseconds since program start contained
-    /// by this `Instant`.
-    pub fn as_secs(&self) -> u32 {
+    pub fn as_millis(&self) -> u64 {
         self.0 / 1000
     }
 
     #[inline]
-    /// Returns the fractional part of this `Instant`, in whole milliseconds.
+    /// Returns the number of *whole* seconds since program start contained by
+    /// this `Instant`.
+    pub fn as_secs(&self) -> u64 {
+        self.0 / 1000000
+    }
+
+    #[inline]
+    /// Returns the number of whole microseconds since program start contained
+    /// by this `Instant`.
+    pub fn as_micros(&self) -> u64 {
+        self.0
+    }
+
+    #[inline]
+    /// Returns the fractional part of this `Instant`, in *whole* milliseconds.
     ///
     /// This method does **not** return the time value in milliseconds. The
     /// returned number always represents a fractional portion of a second
     /// (i.e., it is less than one thousand).
-    pub fn subsec_millis(&self) -> u32 {
-        self.0 % 1000
+    pub fn subsec_millis(&self) -> u64 {
+        self.0 % 1000000 / 1000
+    }
+
+    #[inline]
+    /// Returns the fractional part of this `Instant`, in whole microseconds.
+    ///
+    /// This method does **not** return the time value in microseconds. The
+    /// returned number always represents a fractional portion of a second
+    /// (i.e., it is less than one million).
+    pub fn subsec_micros(&self) -> u64 {
+        self.0 % 1000000
     }
 
     #[inline]
     /// Checked addition of a [`Duration`] to an `Instant`. Computes `self +
     /// rhs`, returning [`None`] if overflow occurred.
     pub fn checked_add(self, rhs: Duration) -> Option<Self> {
-        Some(Self(self.0.checked_add(rhs.as_millis().try_into().ok()?)?))
+        Some(Self(self.0.checked_add(rhs.as_micros().try_into().ok()?)?))
     }
 
     #[inline]
@@ -81,20 +109,20 @@ impl Instant {
     /// `self - rhs`, returning [`None`] if the result would be negative or
     /// overflow occurred.
     pub fn checked_sub(self, rhs: Duration) -> Option<Instant> {
-        Some(Self(self.0.checked_sub(rhs.as_millis().try_into().ok()?)?))
+        Some(Self(self.0.checked_sub(rhs.as_micros().try_into().ok()?)?))
     }
 
     #[inline]
     /// Checked subtraction of two `Instant`s. Computes `self - rhs`, returning
     /// [`None`] if the result would be negative or overflow occurred.
     pub fn checked_sub_instant(self, rhs: Self) -> Option<Duration> {
-        Some(Duration::from_millis(self.0.checked_sub(rhs.0)?.into()))
+        Some(Duration::from_micros(self.0.checked_sub(rhs.0)?))
     }
 
     #[inline]
     /// Checked multiplication of an `Instant` by a scalar. Computes `self *
     /// rhs`, returning [`None`] if an overflow occurred.
-    pub fn checked_mul(self, rhs: u32) -> Option<Instant> {
+    pub fn checked_mul(self, rhs: u64) -> Option<Instant> {
         Some(Self(self.0.checked_mul(rhs)?))
     }
 }
@@ -126,20 +154,20 @@ impl Sub for Instant {
     }
 }
 
-impl Mul<u32> for Instant {
+impl Mul<u64> for Instant {
     type Output = Instant;
 
-    fn mul(self, rhs: u32) -> Self::Output {
+    fn mul(self, rhs: u64) -> Self::Output {
         self.checked_mul(rhs)
             .expect("overflow when multiplying instant by scalar")
     }
 }
 
-impl Div<u32> for Instant {
+impl Div<u64> for Instant {
     type Output = Instant;
 
     #[inline]
-    fn div(self, rhs: u32) -> Self::Output {
+    fn div(self, rhs: u64) -> Self::Output {
         Self(self.0 / rhs)
     }
 }
@@ -162,7 +190,12 @@ impl Display for Instant {
 /// Gets the current timestamp (i.e., the time which has passed since program
 /// start).
 pub fn time_since_start() -> Instant {
-    unsafe { Instant::from_millis(bindings::millis()) }
+    // Needed until https://github.com/purduesigbots/pros/issues/280 is fixed.
+    extern "C" {
+        fn vexSystemHighResTimeGet() -> u64;
+    }
+
+    Instant::from_micros(unsafe { vexSystemHighResTimeGet() })
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
