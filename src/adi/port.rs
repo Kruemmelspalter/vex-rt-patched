@@ -41,7 +41,7 @@ impl TryFrom<(AdiPort, AdiPort)> for AdiEncoder {
     type Error = AdiEncoderError;
 
     /// Converts an `(AdiPort, AdiPort)` into an
-    /// [`AdiEncoder`](crate::adi_encoder::AdiEncoder).
+    /// [`AdiEncoder`](crate::adi::AdiEncoder).
     fn try_from(ports: (AdiPort, AdiPort)) -> Result<Self, Self::Error> {
         if ports.0.expander_port != ports.1.expander_port {
             return Err(AdiEncoderError::PortNonMatchingExtenders);

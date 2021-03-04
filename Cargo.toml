@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "0.3.0"
+version = "0.4.0"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
@@ -9,6 +9,7 @@ edition = "2018"
 build = "build/main.rs"
 description = "A Rust runtime for the Vex V5 built on top of PROS."
 license = "MIT"
+repository = "https://gitlab.com/qvex/vex-rt"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
