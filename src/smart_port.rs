@@ -38,8 +38,7 @@ impl SmartPort {
         unsafe { Serial::new(self.port, baudrate) }
     }
 
-    /// Converts a `SmartPort` into a
-    /// [`AdiExpander`](crate::adi::expander::AdiExpander).
+    /// Converts a `SmartPort` into a [`AdiExpander`](crate::adi::AdiExpander).
     pub fn into_expander(self) -> AdiExpander {
         unsafe { AdiExpander::new(self.port) }
     }
