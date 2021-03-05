@@ -7,7 +7,7 @@ use std::{
 use zip_extensions::zip_extract;
 
 // Path to PROS release zip (relative to project root)
-const PROS_ZIP_STR: &str = "build/kernel@3.3.1.zip";
+const PROS_ZIP_STR: &str = "build/kernel@3.4.0.zip";
 
 // Path to PROS wrapper.h (relative to project root)
 const PROS_WRAPPER_STR: &str = "build/wrapper.h";
