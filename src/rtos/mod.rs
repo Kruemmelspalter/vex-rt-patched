@@ -6,7 +6,7 @@ use core::{
     convert::TryInto,
     fmt::{self, Debug, Display, Formatter},
     marker::PhantomData,
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
     time::Duration,
 };
 
@@ -172,17 +172,41 @@ impl Div<u64> for Instant {
     }
 }
 
+impl AddAssign<Duration> for Instant {
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
+    }
+}
+
+impl SubAssign<Duration> for Instant {
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
+    }
+}
+
+impl MulAssign<u64> for Instant {
+    fn mul_assign(&mut self, rhs: u64) {
+        *self = *self * rhs;
+    }
+}
+
+impl DivAssign<u64> for Instant {
+    fn div_assign(&mut self, rhs: u64) {
+        *self = *self / rhs;
+    }
+}
+
 impl Debug for Instant {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}.{:03} s", self.0 / 1000, self.0 % 1000)
+        write!(f, "{}.{:06}s", self.0 / 1000000, self.0 % 1000000)
     }
 }
 
 impl Display for Instant {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}.{:03} s", self.0 / 1000, self.0 % 1000)
+        write!(f, "{}.{:06}s", self.0 / 1000000, self.0 % 1000000)
     }
 }
 
@@ -379,7 +403,7 @@ impl GenericSleep {
             }
             GenericSleep::Timestamp(v) => {
                 if let Some(d) = v.checked_sub_instant(time_since_start()) {
-                    Task::delay(d)
+                    Task::delay(d);
                 }
                 0
             }
