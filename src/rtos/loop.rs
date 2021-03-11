@@ -1,13 +1,11 @@
 use core::time::Duration;
 
-use crate::bindings;
-
-use super::{time_since_start, GenericSleep, Instant, Selectable};
+use super::{time_since_start, GenericSleep, Instant, Selectable, Task};
 
 /// Provides a constant-period looping construct.
 pub struct Loop {
-    last_time: u32,
-    delta: u32,
+    delta: Duration,
+    next: Instant,
 }
 
 impl Loop {
@@ -15,15 +13,17 @@ impl Loop {
     /// Creates a new loop object with a given period.
     pub fn new(delta: Duration) -> Self {
         Loop {
-            last_time: time_since_start().as_millis() as u32,
-            delta: delta.as_millis() as u32,
+            delta,
+            next: time_since_start() + delta,
         }
     }
 
-    #[inline]
     /// Delays until the next loop cycle.
     pub fn delay(&mut self) {
-        unsafe { bindings::task_delay_until(&mut self.last_time, self.delta) }
+        if let Some(d) = self.next.checked_sub_instant(time_since_start()) {
+            Task::delay(d);
+        }
+        self.next += self.delta;
     }
 
     #[inline]
@@ -33,17 +33,15 @@ impl Loop {
 
         impl<'a> Selectable for LoopSelect<'a> {
             fn poll(self) -> Result<(), Self> {
-                if unsafe { bindings::millis() } >= self.0.last_time + self.0.delta {
-                    self.0.last_time += self.0.delta;
+                if time_since_start() >= self.0.next {
+                    self.0.next += self.0.delta;
                     Ok(())
                 } else {
                     Err(self)
                 }
             }
             fn sleep(&self) -> GenericSleep {
-                GenericSleep::Timestamp(Instant::from_millis(
-                    (self.0.last_time + self.0.delta).into(),
-                ))
+                GenericSleep::Timestamp(self.0.next)
             }
         }
 
