@@ -5,8 +5,9 @@ use core::{
     fmt::{self, Debug, Display, Formatter},
     num::TryFromIntError,
 };
+use cstring_interop::from_cstring_raw;
 
-use crate::{bindings, util::cstring::from_cstring_raw};
+use crate::bindings;
 
 /// Represents a runtime error.
 pub enum Error {

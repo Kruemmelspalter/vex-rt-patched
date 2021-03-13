@@ -12,6 +12,7 @@ impl Robot for SelectRobot {
     }
     fn autonomous(&'static self, ctx: Context) {
         println!("autonomous");
+        let ctx = ctx.fork_with_timeout(Duration::from_secs(20));
         let mut x = 0;
         let mut l = Loop::new(Duration::from_secs(1));
         loop {

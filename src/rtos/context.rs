@@ -1,4 +1,5 @@
 use alloc::sync::{Arc, Weak};
+use by_address::ByAddress;
 use core::{cmp::min, time::Duration};
 
 use super::{
@@ -7,7 +8,6 @@ use super::{
 use crate::{
     select_merge,
     util::{
-        ord_weak::OrdWeak,
         owner::Owner,
         shared_set::{insert, SharedSet, SharedSetHandle},
     },
@@ -120,10 +120,7 @@ impl Context {
 
     fn fork_internal(&self, deadline: Option<Instant>) -> Self {
         let ctx = Self(Arc::new((deadline, Mutex::new(None))));
-        let parent_handle = insert(
-            ContextHandle(Arc::downgrade(&self.0)),
-            Arc::downgrade(&ctx.0).into(),
-        );
+        let parent_handle = insert(ContextHandle(Arc::downgrade(&self.0)), ctx.0.clone().into());
         if parent_handle.is_some() {
             *ctx.0 .1.lock() = Some(ContextData {
                 _parent: parent_handle,
@@ -136,18 +133,16 @@ impl Context {
 }
 
 struct ContextData {
-    _parent: Option<SharedSetHandle<OrdWeak<ContextValue>, ContextHandle>>,
+    _parent: Option<SharedSetHandle<ByAddress<Arc<ContextValue>>, ContextHandle>>,
     event: Event,
-    children: SharedSet<OrdWeak<ContextValue>>,
+    children: SharedSet<ByAddress<Arc<ContextValue>>>,
 }
 
 impl Drop for ContextData {
     fn drop(&mut self) {
         self.event.notify();
         for child in self.children.iter() {
-            if let Some(c) = child.upgrade() {
-                cancel(&c.1)
-            }
+            cancel(&child.1)
         }
     }
 }
@@ -160,8 +155,11 @@ impl Owner<Event> for ContextHandle {
     }
 }
 
-impl Owner<SharedSet<OrdWeak<ContextValue>>> for ContextHandle {
-    fn with<U>(&self, f: impl FnOnce(&mut SharedSet<OrdWeak<ContextValue>>) -> U) -> Option<U> {
+impl Owner<SharedSet<ByAddress<Arc<ContextValue>>>> for ContextHandle {
+    fn with<U>(
+        &self,
+        f: impl FnOnce(&mut SharedSet<ByAddress<Arc<ContextValue>>>) -> U,
+    ) -> Option<U> {
         Some(f(&mut self
             .0
             .upgrade()?
