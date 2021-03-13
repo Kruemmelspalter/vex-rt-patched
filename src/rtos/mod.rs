@@ -9,11 +9,12 @@ use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
     time::Duration,
 };
+use cstring_interop::{from_cstring_raw, with_cstring};
+use libc::c_void;
 
 use crate::{
     bindings,
     error::{Error, SentinelError},
-    util::cstring::{as_cstring, from_cstring_raw},
 };
 
 const TIMEOUT_MAX: u32 = 0xffffffff;
@@ -249,9 +250,9 @@ impl Task {
 
     /// Finds a task by its name.
     pub fn find_by_name(name: &str) -> Result<Task, Error> {
-        let ptr = as_cstring(name, |cname| unsafe {
-            Ok(bindings::task_get_by_name(cname.into_raw()))
-        })?;
+        let ptr = (with_cstring(name.into(), |name| unsafe {
+            bindings::task_get_by_name(name.into_raw()).check()
+        }) as Result<*mut c_void, Error>)?;
         if ptr.is_null() {
             Err(Error::Custom(format!("task not found: {}", name)))
         } else {
@@ -301,7 +302,7 @@ impl Task {
         f: unsafe extern "C" fn(arg1: *mut libc::c_void),
         arg: *mut libc::c_void,
     ) -> Result<Task, Error> {
-        as_cstring(name, |cname| {
+        with_cstring(name.into(), |cname| {
             Ok(Task(
                 unsafe {
                     bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw())
