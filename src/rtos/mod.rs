@@ -215,12 +215,7 @@ impl Display for Instant {
 /// Gets the current timestamp (i.e., the time which has passed since program
 /// start).
 pub fn time_since_start() -> Instant {
-    // Needed until https://github.com/purduesigbots/pros/issues/280 is fixed.
-    extern "C" {
-        fn vexSystemHighResTimeGet() -> u64;
-    }
-
-    Instant::from_micros(unsafe { vexSystemHighResTimeGet() })
+    Instant::from_micros(unsafe { bindings::micros() })
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]

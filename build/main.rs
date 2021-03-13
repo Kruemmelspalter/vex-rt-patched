@@ -26,6 +26,7 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "ext_adi_encoder_init",
     "ext_adi_encoder_reset",
     "ext_adi_encoder_shutdown",
+    "micros",
     "motor_get_actual_velocity",
     "motor_get_brake_mode",
     "motor_get_current_draw",
