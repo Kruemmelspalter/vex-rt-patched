@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "0.4.2"
+version = "0.4.3"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
@@ -21,6 +21,8 @@ spin = "0.7.0"
 newlib-alloc = "0.1.0"
 cstring-interop = "0.1.0"
 by_address = "1.0.4"
+owner-monad = "0.1.0"
+raii-map = "0.1.0"
 
 [build-dependencies]
 bindgen = "0.57.0"

@@ -1,8 +1,8 @@
 use alloc::sync::{Arc, Weak};
-
-use crate::{error::Error, util::owner::Owner};
+use owner_monad::{Owner, OwnerMut};
 
 use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable};
+use crate::error::Error;
 
 /// Represents a source of data which notifies listeners on a new value.
 pub struct Broadcast<T: Clone>(Mutex<BroadcastData<T>>);
@@ -74,7 +74,7 @@ impl<'a, T: Clone> BroadcastListener<'a, T> {
             fn poll(mut self) -> Result<T, Self> {
                 let data = &mut self.data;
                 self.handle
-                    .with_owner(|mtx| BroadcastListener::next_value_impl(data, &mtx))
+                    .with(|mtx| BroadcastListener::next_value_impl(data, &mtx))
                     .flatten()
                     .ok_or(self)
             }
@@ -104,8 +104,11 @@ impl<'a, T: Clone> BroadcastListener<'a, T> {
     }
 }
 
-impl<T> Owner<Event> for Mutex<BroadcastData<T>> {
-    fn with<U>(&self, f: impl for<'b> FnOnce(&'b mut Event) -> U) -> Option<U> {
+impl<T> OwnerMut<Event> for &Mutex<BroadcastData<T>> {
+    fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut Event) -> U) -> Option<U>
+    where
+        Event: 'a,
+    {
         Some(f(&mut self.try_lock().ok()?.event))
     }
 }
