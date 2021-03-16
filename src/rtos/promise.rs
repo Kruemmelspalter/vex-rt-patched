@@ -1,11 +1,12 @@
 use core::cell::UnsafeCell;
 
 use alloc::sync::{Arc, Weak};
+use owner_monad::OwnerMut;
 
 use super::{
     handle_event, Context, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable, Task,
 };
-use crate::{error::Error, select, util::owner::Owner};
+use crate::{error::Error, select};
 
 /// Represents an ongoing operation which produces a result.
 pub struct Promise<T: 'static = ()>(Arc<Mutex<PromiseData<T>>>);
@@ -175,8 +176,11 @@ unsafe impl<T: Sync> Sync for PromiseData<T> {}
 
 struct PromiseHandle<T>(Weak<Mutex<PromiseData<T>>>);
 
-impl<T> Owner<Event> for PromiseHandle<T> {
-    fn with<U>(&self, f: impl FnOnce(&mut Event) -> U) -> Option<U> {
+impl<T> OwnerMut<Event> for PromiseHandle<T> {
+    fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut Event) -> U) -> Option<U>
+    where
+        Event: 'a,
+    {
         Some(f(self.0.upgrade()?.as_ref().lock().event()?))
     }
 }

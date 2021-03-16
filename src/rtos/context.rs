@@ -1,17 +1,13 @@
 use alloc::sync::{Arc, Weak};
 use by_address::ByAddress;
 use core::{cmp::min, time::Duration};
+use owner_monad::OwnerMut;
+use raii_map::set::{insert, Set, SetHandle};
 
 use super::{
     handle_event, time_since_start, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable,
 };
-use crate::{
-    select_merge,
-    util::{
-        owner::Owner,
-        shared_set::{insert, SharedSet, SharedSetHandle},
-    },
-};
+use crate::select_merge;
 
 type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
 
@@ -44,7 +40,7 @@ impl Context {
             Mutex::new(Some(ContextData {
                 _parent: None,
                 event: Event::new(),
-                children: SharedSet::new(),
+                children: Set::new(),
             })),
         )))
     }
@@ -125,7 +121,7 @@ impl Context {
             *ctx.0 .1.lock() = Some(ContextData {
                 _parent: parent_handle,
                 event: Event::new(),
-                children: SharedSet::new(),
+                children: Set::new(),
             });
         }
         ctx
@@ -133,9 +129,9 @@ impl Context {
 }
 
 struct ContextData {
-    _parent: Option<SharedSetHandle<ByAddress<Arc<ContextValue>>, ContextHandle>>,
+    _parent: Option<SetHandle<ByAddress<Arc<ContextValue>>, ContextHandle>>,
     event: Event,
-    children: SharedSet<ByAddress<Arc<ContextValue>>>,
+    children: Set<ByAddress<Arc<ContextValue>>>,
 }
 
 impl Drop for ContextData {
@@ -149,17 +145,23 @@ impl Drop for ContextData {
 
 struct ContextHandle(Weak<ContextValue>);
 
-impl Owner<Event> for ContextHandle {
-    fn with<U>(&self, f: impl FnOnce(&mut Event) -> U) -> Option<U> {
+impl OwnerMut<Event> for ContextHandle {
+    fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut Event) -> U) -> Option<U>
+    where
+        Event: 'a,
+    {
         Some(f(&mut self.0.upgrade()?.as_ref().1.lock().as_mut()?.event))
     }
 }
 
-impl Owner<SharedSet<ByAddress<Arc<ContextValue>>>> for ContextHandle {
-    fn with<U>(
-        &self,
-        f: impl FnOnce(&mut SharedSet<ByAddress<Arc<ContextValue>>>) -> U,
-    ) -> Option<U> {
+impl OwnerMut<Set<ByAddress<Arc<ContextValue>>>> for ContextHandle {
+    fn with<'a, U>(
+        &'a mut self,
+        f: impl FnOnce(&mut Set<ByAddress<Arc<ContextValue>>>) -> U,
+    ) -> Option<U>
+    where
+        ContextValue: 'a,
+    {
         Some(f(&mut self
             .0
             .upgrade()?

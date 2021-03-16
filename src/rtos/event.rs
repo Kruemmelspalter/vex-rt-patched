@@ -1,17 +1,16 @@
-use crate::{
-    bindings,
-    rtos::Task,
-    util::{owner::Owner, shared_set::*},
-};
+use owner_monad::{Owner, OwnerMut};
+use raii_map::set::{insert, Set, SetHandle};
+
+use crate::{bindings, rtos::Task};
 
 /// Represents a self-maintaining set of tasks to notify when an event occurs.
-pub struct Event(SharedSet<Task>);
+pub struct Event(Set<Task>);
 
 impl Event {
     #[inline]
     /// Creates a new event structure with an empty set of tasks.
     pub fn new() -> Self {
-        Event(SharedSet::new())
+        Event(Set::new())
     }
 
     /// Notify the tasks which are waiting for the event.
@@ -36,18 +35,13 @@ impl Default for Event {
 
 /// Represents a handle into the listing of the current task in an [`Event`].
 /// When this handle is dropped, that task is removed from the event's set.
-pub struct EventHandle<O: Owner<Event>>(Option<SharedSetHandle<Task, EventHandleOwner<O>>>);
+pub struct EventHandle<O: OwnerMut<Event>>(Option<SetHandle<Task, EventHandleOwner<O>>>);
 
-impl<O: Owner<Event>> EventHandle<O> {
+impl<O: OwnerMut<Event>> EventHandle<O> {
     /// Returns `true` if the event handle is orphaned, i.e. the parent event
     /// object no longer exists.
     pub fn is_done(&self) -> bool {
-        self.with_owner(|_| ()).is_none()
-    }
-
-    /// Calls a given function on the underlying owner, if it exists.
-    pub fn with_owner<U>(&self, f: impl FnOnce(&O) -> U) -> Option<U> {
-        Some(f(&self.0.as_ref()?.owner().0))
+        self.with(|_| ()).is_none()
     }
 
     /// Nullifies the handle. This has the same effect as dropping it or
@@ -57,11 +51,22 @@ impl<O: Owner<Event>> EventHandle<O> {
     }
 }
 
-struct EventHandleOwner<O: Owner<Event>>(O);
+impl<O: OwnerMut<Event>> Owner<O> for EventHandle<O> {
+    fn with<'a, U>(&'a self, f: impl FnOnce(&O) -> U) -> Option<U>
+    where
+        O: 'a,
+    {
+        self.0.as_ref()?.with(|o| f(&o.0))
+    }
+}
 
-impl<O: Owner<Event>> Owner<SharedSet<Task>> for EventHandleOwner<O> {
-    #[inline]
-    fn with<U>(&self, f: impl FnOnce(&mut SharedSet<Task>) -> U) -> Option<U> {
+struct EventHandleOwner<O: OwnerMut<Event>>(O);
+
+impl<O: OwnerMut<Event>> OwnerMut<Set<Task>> for EventHandleOwner<O> {
+    fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut Set<Task>) -> U) -> Option<U>
+    where
+        Event: 'a,
+    {
         self.0.with(|e| f(&mut e.0))
     }
 }
@@ -69,6 +74,6 @@ impl<O: Owner<Event>> Owner<SharedSet<Task>> for EventHandleOwner<O> {
 #[inline]
 /// Adds the current task to the notification set for an [`Event`], acquiring an
 /// [`EventHandle`] to manage the lifetime of that entry.
-pub fn handle_event<O: Owner<Event>>(owner: O) -> EventHandle<O> {
+pub fn handle_event<O: OwnerMut<Event>>(owner: O) -> EventHandle<O> {
     EventHandle(insert(EventHandleOwner(owner), Task::current()))
 }

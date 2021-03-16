@@ -1,11 +1,12 @@
 use alloc::sync::Arc;
 use core::time::Duration;
+use owner_monad::OwnerMut;
 
 use super::{
     handle_event, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable, Semaphore,
     TIMEOUT_MAX,
 };
-use crate::{error::Error, util::owner::Owner};
+use crate::error::Error;
 
 /// Represents the sending end of a rendez-vous channel.
 pub struct SendChannel<T>(Arc<ChannelShared<T>>);
@@ -174,16 +175,22 @@ struct ChannelData<T> {
 
 struct SendWrapper<'b, T>(&'b ChannelShared<T>);
 
-impl<'b, T> Owner<Event> for SendWrapper<'b, T> {
-    fn with<U>(&self, f: impl for<'a> FnOnce(&'a mut Event) -> U) -> Option<U> {
+impl<'b, T> OwnerMut<Event> for SendWrapper<'b, T> {
+    fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut Event) -> U) -> Option<U>
+    where
+        Event: 'a,
+    {
         Some(f(&mut self.0.data.try_lock().ok()?.send_event))
     }
 }
 
 struct ReceiveWrapper<'b, T>(&'b ChannelShared<T>);
 
-impl<'b, T> Owner<Event> for ReceiveWrapper<'b, T> {
-    fn with<U>(&self, f: impl for<'a> FnOnce(&'a mut Event) -> U) -> Option<U> {
+impl<'b, T> OwnerMut<Event> for ReceiveWrapper<'b, T> {
+    fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut Event) -> U) -> Option<U>
+    where
+        Event: 'a,
+    {
         Some(f(&mut self.0.data.try_lock().ok()?.receive_event))
     }
 }
