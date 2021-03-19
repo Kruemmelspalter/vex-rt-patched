@@ -4,7 +4,8 @@ use alloc::sync::{Arc, Weak};
 use owner_monad::OwnerMut;
 
 use super::{
-    handle_event, Context, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable, Task,
+    handle_event, select, Context, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable,
+    Task,
 };
 use crate::{error::Error, select};
 
@@ -104,11 +105,7 @@ impl<T: Send + Sync + 'static> Promise<T> {
         f: impl FnOnce(&T) -> U + Send + 'static,
     ) -> Promise<U> {
         let upstream = self.clone();
-        Promise::spawn(move || {
-            select! {
-                v = upstream.done() => f(v),
-            }
-        })
+        Promise::spawn(move || f(select(upstream.done())))
     }
 
     #[inline]

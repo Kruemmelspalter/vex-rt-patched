@@ -502,6 +502,18 @@ pub fn select_either<'a, T: 'a>(
 }
 
 #[inline]
+/// Awaits a [`Selectable`] event.
+pub fn select<'a, T: 'a>(mut event: impl Selectable<T> + 'a) -> T {
+    loop {
+        event.sleep();
+        event = match event.poll() {
+            Ok(r) => return r,
+            Err(e) => e,
+        }
+    }
+}
+
+#[inline]
 /// Creates a new [`Selectable`] event which completes after the given duration
 /// of time.
 pub fn delay(time: Duration) -> impl Selectable {
