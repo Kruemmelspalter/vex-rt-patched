@@ -441,9 +441,9 @@ pub trait Selectable<T = ()>: Sized {
 
 #[inline]
 /// Creates a new [`Selectable`] event by mapping the result of a given one.
-pub fn select_map<'a, T: 'a, U: 'a, F: 'a + FnOnce(T) -> U>(
+pub fn select_map<'a, T: 'a, U: 'a>(
     event: impl Selectable<T> + 'a,
-    f: F,
+    f: impl 'a + FnOnce(T) -> U,
 ) -> impl Selectable<U> + 'a {
     struct MapSelect<T, U, E: Selectable<T>, F: FnOnce(T) -> U> {
         event: E,
@@ -455,11 +455,7 @@ pub fn select_map<'a, T: 'a, U: 'a, F: 'a + FnOnce(T) -> U>(
         fn poll(self) -> Result<U, Self> {
             match self.event.poll() {
                 Ok(r) => Ok((self.f)(r)),
-                Err(event) => Err(Self {
-                    event,
-                    f: self.f,
-                    _t: PhantomData,
-                }),
+                Err(event) => Err(Self { event, ..self }),
             }
         }
         fn sleep(&self) -> GenericSleep {
