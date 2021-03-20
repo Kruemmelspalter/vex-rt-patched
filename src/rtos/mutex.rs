@@ -16,7 +16,7 @@ pub struct Mutex<T: ?Sized> {
 
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
 
-unsafe impl<T: ?Sized + Sync> Sync for Mutex<T> {}
+unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 
 /// Provides a constant-period looping construct.
 impl<T> Mutex<T> {
