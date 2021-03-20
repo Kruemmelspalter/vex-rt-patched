@@ -75,30 +75,51 @@ impl Context {
     /// A [`Selectable`] event which occurs when the context is
     /// cancelled. The sleep amount takes the context deadline into
     /// consideration.
-    pub fn done(&'_ self) -> impl Selectable + '_ {
-        struct ContextSelect<'a>(&'a Context, EventHandle<ContextHandle>);
+    pub fn done(&'_ self) -> impl Selectable<Result = ()> + '_ {
+        struct ContextSelect<'a>(&'a Arc<ContextValue>);
+
+        struct ContextEvent<'a> {
+            ctx: &'a Arc<ContextValue>,
+            handle: EventHandle<ContextHandle>,
+            offset: u32,
+        }
 
         impl<'a> Selectable for ContextSelect<'a> {
-            fn poll(self) -> Result<(), Self> {
-                let mut lock = self.0 .0 .1.lock();
+            const COUNT: u32 = 1;
+
+            type Result = ();
+
+            type Event = ContextEvent<'a>;
+
+            fn listen(self, offset: u32) -> Self::Event {
+                ContextEvent {
+                    ctx: self.0,
+                    handle: handle_event(ContextHandle(Arc::downgrade(&self.0)), offset),
+                    offset,
+                }
+            }
+
+            fn poll(event: Self::Event, _mask: u32) -> Result<(), Self::Event> {
+                let mut lock = event.ctx.1.lock();
                 let opt = &mut lock.as_mut();
                 if opt.is_some() {
-                    if self.0 .0 .0.map_or(false, |v| v <= time_since_start()) {
+                    if event.ctx.0.map_or(false, |v| v <= time_since_start()) {
                         opt.take();
                         Ok(())
                     } else {
-                        Err(self)
+                        Err(event)
                     }
                 } else {
                     Ok(())
                 }
             }
-            fn sleep(&self) -> GenericSleep {
-                GenericSleep::NotifyTake(self.0 .0 .0)
+
+            fn sleep(event: &Self::Event) -> GenericSleep {
+                GenericSleep::NotifyTake(event.ctx.0.map(|t| (t, 1u32.rotate_left(event.offset))))
             }
         }
 
-        ContextSelect(self, handle_event(ContextHandle(Arc::downgrade(&self.0))))
+        ContextSelect(&self.0)
     }
 
     /// Creates a [`Selectable`] event which occurs when either the given
@@ -106,8 +127,8 @@ impl Context {
     /// first.
     pub fn wrap<'a, T: 'a>(
         &'a self,
-        event: impl Selectable<T> + 'a,
-    ) -> impl Selectable<Option<T>> + 'a {
+        event: impl Selectable<Result = T> + 'a,
+    ) -> impl Selectable<Result = Option<T>> + 'a {
         select_merge! {
             r = event => Some(r),
             _ = self.done() => None,

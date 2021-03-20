@@ -44,16 +44,33 @@ impl<T: 'static> Promise<T> {
     }
 
     /// A [`Selectable`] event which occurs when the promise is resolved.
-    pub fn done(&'_ self) -> impl Selectable<&'_ T> + '_ {
-        struct PromiseSelect<'a, T: 'static> {
-            promise: &'a Promise<T>,
+    pub fn done(&'_ self) -> impl Selectable<Result = &'_ T> + '_ {
+        struct PromiseSelect<'a, T: 'static>(&'a Arc<Mutex<PromiseData<T>>>);
+
+        struct PromiseEvent<'a, T: 'static> {
+            promise: &'a Arc<Mutex<PromiseData<T>>>,
             handle: EventHandle<PromiseHandle<T>>,
+            offset: u32,
         }
 
-        impl<'a, T> Selectable<&'a T> for PromiseSelect<'a, T> {
-            fn poll(self) -> Result<&'a T, Self> {
-                self.promise
-                    .0
+        impl<'a, T> Selectable for PromiseSelect<'a, T> {
+            const COUNT: u32 = 1;
+
+            type Result = &'a T;
+
+            type Event = PromiseEvent<'a, T>;
+
+            fn listen(self, offset: u32) -> Self::Event {
+                PromiseEvent {
+                    promise: self.0,
+                    handle: handle_event(PromiseHandle(Arc::downgrade(&self.0)), offset),
+                    offset,
+                }
+            }
+
+            fn poll(event: Self::Event, _mask: u32) -> Result<&'a T, Self::Event> {
+                event
+                    .promise
                     .lock()
                     .result()
                     // This is safe, since the promise can only be resolved once (thanks to the
@@ -62,22 +79,20 @@ impl<T: 'static> Promise<T> {
                     // defined to last only as long as the `Context` object, which has an `Arc`
                     // reference to the object containing the result.
                     .map(|r| unsafe { &*UnsafeCell::<T>::raw_get(r) })
-                    .ok_or(self)
+                    .ok_or(event)
             }
+
             #[inline]
-            fn sleep(&self) -> GenericSleep {
-                if self.handle.is_done() {
-                    GenericSleep::Timestamp(Instant::from_millis(0))
+            fn sleep(event: &Self::Event) -> GenericSleep {
+                if event.handle.is_done() {
+                    GenericSleep::Timestamp(Instant::from_millis(0), 1u32.rotate_left(event.offset))
                 } else {
                     GenericSleep::NotifyTake(None)
                 }
             }
         }
 
-        PromiseSelect {
-            promise: self,
-            handle: handle_event(PromiseHandle(Arc::downgrade(&self.0))),
-        }
+        PromiseSelect(&self.0)
     }
 }
 
@@ -119,9 +134,14 @@ impl<T: Send + Sync + 'static> Promise<T> {
     ) -> Promise<U> {
         let upstream = self.clone();
         Promise::spawn(move || {
-            select! {
-                v = upstream.done() => f(v),
-                _ = ctx.done() => default,
+            // vex_rt_macros::select! {
+            //     v = upstream.done() => f(v),
+            //     _ = ctx.done() => default,
+            // }
+            if let Some(v) = select(ctx.wrap(upstream.done())) {
+                f(v)
+            } else {
+                default
             }
         })
     }

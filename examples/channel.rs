@@ -15,7 +15,7 @@ impl Robot for ChannelBot {
         let mut l = Loop::new(Duration::from_secs(1));
         Task::spawn(move || loop {
             x += 1;
-            select! {
+            vex_rt_macros::select! {
                 _ = send.select(x) => {},
             }
             l.delay();
@@ -26,7 +26,7 @@ impl Robot for ChannelBot {
     fn opcontrol(&'static self, ctx: Context) {
         println!("opcontrol");
         loop {
-            select! {
+            vex_rt_macros::select! {
                 x = self.chan.select() => println!("{}", x),
                 _ = ctx.done() => break,
             }

@@ -1,22 +1,33 @@
+use core::ptr::null_mut;
+
 use owner_monad::{Owner, OwnerMut};
-use raii_map::set::{insert, Set, SetHandle};
+use raii_map::map::{insert, Map, MapHandle};
 
 use crate::{bindings, rtos::Task};
 
+pub type HandlerMap = Map<Task, u32>;
+
 /// Represents a self-maintaining set of tasks to notify when an event occurs.
-pub struct Event(Set<Task>);
+pub struct Event(HandlerMap);
 
 impl Event {
     #[inline]
     /// Creates a new event structure with an empty set of tasks.
     pub fn new() -> Self {
-        Event(Set::new())
+        Event(Map::new())
     }
 
     /// Notify the tasks which are waiting for the event.
     pub fn notify(&self) {
-        for t in self.0.iter() {
-            unsafe { bindings::task_notify(t.0) };
+        for (task, offset) in &self.0 {
+            unsafe {
+                bindings::task_notify_ext(
+                    task.0,
+                    1u32.rotate_left(*offset),
+                    bindings::notify_action_e_t_E_NOTIFY_ACTION_BITS,
+                    null_mut(),
+                );
+            }
         }
     }
 
@@ -35,7 +46,7 @@ impl Default for Event {
 
 /// Represents a handle into the listing of the current task in an [`Event`].
 /// When this handle is dropped, that task is removed from the event's set.
-pub struct EventHandle<O: OwnerMut<Event>>(Option<SetHandle<Task, EventHandleOwner<O>>>);
+pub struct EventHandle<O: OwnerMut<Event>>(Option<MapHandle<Task, u32, EventHandleOwner<O>>>);
 
 impl<O: OwnerMut<Event>> EventHandle<O> {
     /// Returns `true` if the event handle is orphaned, i.e. the parent event
@@ -62,8 +73,8 @@ impl<O: OwnerMut<Event>> Owner<O> for EventHandle<O> {
 
 struct EventHandleOwner<O: OwnerMut<Event>>(O);
 
-impl<O: OwnerMut<Event>> OwnerMut<Set<Task>> for EventHandleOwner<O> {
-    fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut Set<Task>) -> U) -> Option<U>
+impl<O: OwnerMut<Event>> OwnerMut<HandlerMap> for EventHandleOwner<O> {
+    fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut HandlerMap) -> U) -> Option<U>
     where
         Event: 'a,
     {
@@ -74,6 +85,6 @@ impl<O: OwnerMut<Event>> OwnerMut<Set<Task>> for EventHandleOwner<O> {
 #[inline]
 /// Adds the current task to the notification set for an [`Event`], acquiring an
 /// [`EventHandle`] to manage the lifetime of that entry.
-pub fn handle_event<O: OwnerMut<Event>>(owner: O) -> EventHandle<O> {
-    EventHandle(insert(EventHandleOwner(owner), Task::current()))
+pub fn handle_event<O: OwnerMut<Event>>(owner: O, offset: u32) -> EventHandle<O> {
+    EventHandle(insert(EventHandleOwner(owner), Task::current(), offset))
 }

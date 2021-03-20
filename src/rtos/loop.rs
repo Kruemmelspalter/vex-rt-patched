@@ -28,20 +28,36 @@ impl Loop {
 
     #[inline]
     /// A [`Selectable`] event which occurs at the next loop cycle.
-    pub fn select(&'_ mut self) -> impl Selectable + '_ {
+    pub fn select(&'_ mut self) -> impl Selectable<Result = ()> + '_ {
         struct LoopSelect<'a>(&'a mut Loop);
 
+        struct LoopEvent<'a> {
+            l: &'a mut Loop,
+            offset: u32,
+        }
+
         impl<'a> Selectable for LoopSelect<'a> {
-            fn poll(self) -> Result<(), Self> {
-                if time_since_start() >= self.0.next {
-                    self.0.next += self.0.delta;
+            const COUNT: u32 = 1;
+
+            type Result = ();
+
+            type Event = LoopEvent<'a>;
+
+            fn listen(self, offset: u32) -> Self::Event {
+                LoopEvent { l: self.0, offset }
+            }
+
+            fn poll(event: Self::Event, _mask: u32) -> Result<(), Self::Event> {
+                if time_since_start() >= event.l.next {
+                    event.l.next += event.l.delta;
                     Ok(())
                 } else {
-                    Err(self)
+                    Err(event)
                 }
             }
-            fn sleep(&self) -> GenericSleep {
-                GenericSleep::Timestamp(self.0.next)
+
+            fn sleep(event: &Self::Event) -> GenericSleep {
+                GenericSleep::Timestamp(event.l.next, 1u32.rotate_left(event.offset))
             }
         }
 

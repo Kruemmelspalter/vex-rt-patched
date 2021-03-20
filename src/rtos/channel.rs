@@ -16,21 +16,42 @@ impl<T> SendChannel<T> {
     /// channel. Respects the atomicity and rendez-vous properties of the
     /// operation; if the event occurs and is processed, then the value was
     /// sent, and otherwise not.
-    pub fn select(&self, value: T) -> impl '_ + Selectable {
+    pub fn select(&self, value: T) -> impl '_ + Selectable<Result = ()> {
         struct SendSelect<'b, T> {
             value: T,
             data: &'b ChannelShared<T>,
+        }
+
+        struct SendEvent<'b, T> {
+            value: T,
+            data: &'b ChannelShared<T>,
             handle: EventHandle<SendWrapper<'b, T>>,
+            offset: u32,
         }
 
         impl<'b, T> Selectable for SendSelect<'b, T> {
-            fn poll(self) -> Result<(), Self> {
+            const COUNT: u32 = 1;
+
+            type Result = ();
+
+            type Event = SendEvent<'b, T>;
+
+            fn listen(self, offset: u32) -> Self::Event {
+                SendEvent {
+                    value: self.value,
+                    data: self.data,
+                    handle: handle_event(SendWrapper(self.data), offset),
+                    offset,
+                }
+            }
+
+            fn poll(event: Self::Event, _mask: u32) -> Result<(), Self::Event> {
                 // Send mutex is locked for the duration of the poll operation.
-                let _send_lock = self.data.send_mutex.lock();
+                let _send_lock = event.data.send_mutex.lock();
 
                 let n = {
-                    let mut lock = self.data.data.lock();
-                    lock.value = Some(self.value);
+                    let mut lock = event.data.data.lock();
+                    lock.value = Some(event.value);
                     lock.receive_event.notify();
                     lock.receive_event.task_count()
                 };
@@ -38,29 +59,26 @@ impl<T> SendChannel<T> {
                 // Wait for all receivers to process.
                 for _ in 0..n {
                     // TODO: consider shortening this timeout to enforce a realtime guarantee.
-                    self.data
+                    event
+                        .data
                         .ack_sem
                         .wait(Duration::from_millis(TIMEOUT_MAX as u64))
                         .unwrap_or_else(|err| panic!("failed to synchronize on channel: {}", err));
                 }
 
                 // Check if the value remains.
-                if let Some(value) = self.data.data.lock().value.take() {
-                    Err(Self {
-                        value,
-                        data: self.data,
-                        handle: self.handle,
-                    })
+                if let Some(value) = event.data.data.lock().value.take() {
+                    Err(SendEvent { value, ..event })
                 } else {
                     Ok(())
                 }
             }
 
-            fn sleep(&self) -> GenericSleep {
-                if self.data.data.lock().receive_event.task_count() == 0 {
+            fn sleep(event: &Self::Event) -> GenericSleep {
+                if event.data.data.lock().receive_event.task_count() == 0 {
                     GenericSleep::NotifyTake(None)
                 } else {
-                    GenericSleep::Timestamp(Instant::from_millis(0))
+                    GenericSleep::Timestamp(Instant::from_millis(0), 1u32.rotate_left(event.offset))
                 }
             }
         }
@@ -68,7 +86,6 @@ impl<T> SendChannel<T> {
         SendSelect {
             value,
             data: &self.0,
-            handle: handle_event(SendWrapper(&*self.0)),
         }
     }
 }
@@ -85,32 +102,51 @@ pub struct ReceiveChannel<T>(Arc<ChannelShared<T>>);
 impl<T> ReceiveChannel<T> {
     /// A [`Selectable`] event which resolves when a value is received on the
     /// channel.
-    pub fn select(&self) -> impl '_ + Selectable<T> {
+    pub fn select(&self) -> impl '_ + Selectable<Result = T> {
         struct ReceiveSelect<'b, T> {
             data: &'b ChannelShared<T>,
-            handle: EventHandle<ReceiveWrapper<'b, T>>,
         }
 
-        impl<'b, T> Selectable<T> for ReceiveSelect<'b, T> {
-            fn poll(self) -> core::result::Result<T, Self> {
-                let mut lock = self.data.data.lock();
+        struct ReceiveEvent<'b, T> {
+            data: &'b ChannelShared<T>,
+            handle: EventHandle<ReceiveWrapper<'b, T>>,
+            offset: u32,
+        }
+
+        impl<'b, T> Selectable for ReceiveSelect<'b, T> {
+            const COUNT: u32 = 1;
+
+            type Result = T;
+
+            type Event = ReceiveEvent<'b, T>;
+
+            fn listen(self, offset: u32) -> Self::Event {
+                ReceiveEvent {
+                    data: self.data,
+                    handle: handle_event(ReceiveWrapper(self.data), offset),
+                    offset,
+                }
+            }
+
+            fn poll(event: Self::Event, _mask: u32) -> core::result::Result<T, Self::Event> {
+                let mut lock = event.data.data.lock();
 
                 // Ignore failure to post; we don't care.
-                self.data.ack_sem.post().unwrap_or(());
+                event.data.ack_sem.post().unwrap_or(());
 
                 if let Some(value) = lock.value.take() {
                     Ok(value)
                 } else {
                     lock.send_event.notify();
-                    Err(self)
+                    Err(event)
                 }
             }
 
-            fn sleep(&self) -> GenericSleep {
-                if self.data.data.lock().send_event.task_count() == 0 {
+            fn sleep(event: &Self::Event) -> GenericSleep {
+                if event.data.data.lock().send_event.task_count() == 0 {
                     GenericSleep::NotifyTake(None)
                 } else {
-                    GenericSleep::Timestamp(Instant::from_millis(0))
+                    GenericSleep::Timestamp(Instant::from_millis(0), 1u32.rotate_left(event.offset))
                 }
             }
         }
@@ -122,14 +158,10 @@ impl<T> ReceiveChannel<T> {
 
                 // Ignore failure to post; we don't care.
                 self.data.ack_sem.post().unwrap_or(());
-                self.handle.clear();
             }
         }
 
-        ReceiveSelect {
-            data: &self.0,
-            handle: handle_event(ReceiveWrapper(&*self.0)),
-        }
+        ReceiveSelect { data: &self.0 }
     }
 }
 

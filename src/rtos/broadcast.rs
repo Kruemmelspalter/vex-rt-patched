@@ -63,32 +63,51 @@ impl<'a, T: Clone> BroadcastListener<'a, T> {
     #[inline]
     /// A [`Selectable`] event which occurs when new data is published to the
     /// underlying [`Broadcast`] event.
-    pub fn select(&'_ mut self) -> impl Selectable<T> + '_ {
-        struct BroadcastSelect<'b, T: Clone> {
+    pub fn select(&'_ mut self) -> impl Selectable<Result = T> + '_ {
+        struct BroadcastSelect<'b, T> {
+            data: &'b mut Weak<T>,
+            mtx: &'b Mutex<BroadcastData<T>>,
+        }
+
+        struct BroadcastEvent<'b, T: Clone> {
             data: &'b mut Weak<T>,
             handle: EventHandle<&'b Mutex<BroadcastData<T>>>,
         }
 
-        impl<'b, T: Clone> Selectable<T> for BroadcastSelect<'b, T> {
+        impl<'b, T: Clone> Selectable for BroadcastSelect<'b, T> {
+            const COUNT: u32 = 1;
+
+            type Result = T;
+
+            type Event = BroadcastEvent<'b, T>;
+
             #[inline]
-            fn poll(mut self) -> Result<T, Self> {
-                let data = &mut self.data;
-                self.handle
+            fn listen(self, offset: u32) -> Self::Event {
+                BroadcastEvent {
+                    data: self.data,
+                    handle: handle_event(self.mtx, offset),
+                }
+            }
+
+            #[inline]
+            fn poll(mut event: Self::Event, _mask: u32) -> Result<T, Self::Event> {
+                let data = &mut event.data;
+                event
+                    .handle
                     .with(|mtx| BroadcastListener::next_value_impl(data, &mtx))
                     .flatten()
-                    .ok_or(self)
+                    .ok_or(event)
             }
+
             #[inline]
-            fn sleep(&self) -> GenericSleep {
+            fn sleep(event: &Self::Event) -> GenericSleep {
                 GenericSleep::NotifyTake(None)
             }
         }
 
-        let mtx: &'_ Mutex<BroadcastData<T>> = self.mtx;
-
         BroadcastSelect {
             data: &mut self.data,
-            handle: handle_event(mtx),
+            mtx: self.mtx,
         }
     }
 

@@ -88,7 +88,7 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "task_get_name",
     "task_get_priority",
     "task_get_state",
-    "task_notify",
+    "task_notify_ext",
     "task_notify_take",
 ];
 

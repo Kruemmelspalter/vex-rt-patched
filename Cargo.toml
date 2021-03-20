@@ -11,7 +11,8 @@ description = "A Rust runtime for the Vex V5 built on top of PROS."
 license = "MIT"
 repository = "https://gitlab.com/qvex/vex-rt"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["vex-rt-macros"]
 
 [dependencies]
 libc = { version = "0.2", default-features = false }
@@ -23,6 +24,9 @@ cstring-interop = "0.1.0"
 by_address = "1.0.4"
 owner-monad = "0.1.0"
 raii-map = "0.1.0"
+
+[dependencies.vex-rt-macros]
+path = "vex-rt-macros"
 
 [build-dependencies]
 bindgen = "0.57.0"
