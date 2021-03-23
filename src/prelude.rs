@@ -6,6 +6,7 @@ pub use crate::select;
 pub use crate::adi::*;
 pub use crate::controller::*;
 pub use crate::error::*;
+pub use crate::imu::*;
 pub use crate::io::*;
 pub use crate::machine::*;
 pub use crate::motor::*;
