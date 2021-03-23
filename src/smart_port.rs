@@ -1,6 +1,7 @@
 //! SmartPort.
 
 use crate::adi::AdiExpander;
+use crate::imu::InertialSensor;
 use crate::{
     motor::{EncoderUnits, Gearset, Motor},
     serial::Serial,
@@ -41,5 +42,11 @@ impl SmartPort {
     /// Converts a `SmartPort` into a [`AdiExpander`](crate::adi::AdiExpander).
     pub fn into_expander(self) -> AdiExpander {
         unsafe { AdiExpander::new(self.port) }
+    }
+
+    /// Converts a `SmartPort` into a
+    /// [`InertialSensor`](crate::imu::InertialSensor).
+    pub fn into_imu(self) -> InertialSensor {
+        unsafe { InertialSensor::new(self.port) }
     }
 }
