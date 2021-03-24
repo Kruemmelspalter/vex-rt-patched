@@ -3,6 +3,7 @@
 use crate::adi::AdiExpander;
 use crate::imu::InertialSensor;
 use crate::{
+    distance::DistanceSensor,
     motor::{EncoderUnits, Gearset, Motor},
     serial::Serial,
 };
@@ -45,6 +46,10 @@ impl SmartPort {
     }
 
     /// Converts a `SmartPort` into a
+    /// [`DistanceSensor`](crate::distance::DistanceSensor).
+    pub fn into_distance(self) -> DistanceSensor {
+        unsafe { DistanceSensor::new(self.port) }
+    }
     /// [`InertialSensor`](crate::imu::InertialSensor).
     pub fn into_imu(self) -> InertialSensor {
         unsafe { InertialSensor::new(self.port) }

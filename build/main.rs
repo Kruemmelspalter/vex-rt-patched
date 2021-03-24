@@ -22,6 +22,10 @@ const BITFIELD_ENUMS: &[&str] = &[];
 const WHITELISTED_FUNCS: &[&str] = &[
     "controller_get_analog",
     "controller_get_digital",
+    "distance_get",
+    "distance_get_confidence",
+    "distance_get_object_size",
+    "distance_get_object_velocity",
     "ext_adi_encoder_get",
     "ext_adi_encoder_init",
     "ext_adi_encoder_reset",
