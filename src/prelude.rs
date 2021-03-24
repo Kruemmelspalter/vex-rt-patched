@@ -5,6 +5,7 @@ pub use crate::select;
 
 pub use crate::adi::*;
 pub use crate::controller::*;
+pub use crate::distance::*;
 pub use crate::error::*;
 pub use crate::imu::*;
 pub use crate::io::*;

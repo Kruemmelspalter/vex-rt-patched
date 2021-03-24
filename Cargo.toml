@@ -4,6 +4,7 @@ version = "0.5.0"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
+    "Jai Agrawal <jaiagr@pm.me>",
 ]
 edition = "2018"
 build = "build/main.rs"

@@ -16,6 +16,7 @@ mod error;
 
 pub mod adi;
 pub mod controller;
+pub mod distance;
 pub mod imu;
 pub mod io;
 pub mod machine;
