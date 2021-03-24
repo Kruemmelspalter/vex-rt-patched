@@ -1,5 +1,3 @@
-//! Allocator
-
 use core::alloc::Layout;
 use newlib_alloc::Alloc;
 

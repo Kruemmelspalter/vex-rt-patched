@@ -3,23 +3,23 @@
 use super::port::AdiPort;
 use crate::bindings;
 
-/// A struct which represents a V5 ADI expander
+/// A struct which represents a V5 ADI expander.
 pub struct AdiExpander {
-    /// ADI Port 1 / A
+    /// ADI Port 1 / A.
     pub port_a: AdiPort,
-    /// ADI Port 2 / B
+    /// ADI Port 2 / B.
     pub port_b: AdiPort,
-    /// ADI Port 3 / C
+    /// ADI Port 3 / C.
     pub port_c: AdiPort,
-    /// ADI Port 4 / D
+    /// ADI Port 4 / D.
     pub port_d: AdiPort,
-    /// ADI Port 5 / E
+    /// ADI Port 5 / E.
     pub port_e: AdiPort,
-    /// ADI Port 6 / F
+    /// ADI Port 6 / F.
     pub port_f: AdiPort,
-    /// ADI Port 7 / G
+    /// ADI Port 7 / G.
     pub port_g: AdiPort,
-    /// ADI Port 8 / H
+    /// ADI Port 8 / H.
     pub port_h: AdiPort,
 }
 
