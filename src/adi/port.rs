@@ -16,6 +16,7 @@ impl AdiPort {
     /// Constructs a new ADI port.
     ///
     /// # Safety
+    ///
     /// This function is unsafe because it allows the user to create multiple
     /// mutable references to an V5 ADI port. You likely want to implement
     /// [`Robot::new()`](crate::robot::Robot::new()) instead.

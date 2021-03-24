@@ -18,7 +18,6 @@ impl Motor {
     /// This function is unsafe because it allows the user to create multiple
     /// mutable references to the same motor. You likely want to implement
     /// [`Robot::new()`](crate::robot::Robot::new()) instead.
-    /// instead.
     pub unsafe fn new(
         port: u8,
         gearset: Gearset,
@@ -443,16 +442,16 @@ pub enum Direction {
     Negative,
 }
 
-/// Represents the possible encoder units
+/// Represents the possible encoder units.
 pub enum EncoderUnits {
     /// The number of ticks of the internal motor encoder.
-    /// - 300 ticks/rev with [`Gearset::SixToOne`]
-    /// - 900 ticks/rev with [`Gearset::EighteenToOne`]
-    /// - 1800 ticks/rev with [`Gearset::ThirtySixToOne`]
+    /// - 300 ticks/rev with [`Gearset::SixToOne`].
+    /// - 900 ticks/rev with [`Gearset::EighteenToOne`].
+    /// - 1800 ticks/rev with [`Gearset::ThirtySixToOne`].
     EncoderTicks,
-    /// Degrees
+    /// Degrees.
     Degrees,
-    /// Rotations
+    /// Rotations.
     Rotations,
 }
 

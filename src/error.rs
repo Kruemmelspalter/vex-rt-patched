@@ -1,4 +1,4 @@
-//! Error
+//! Common error model.
 
 use alloc::{format, string::*};
 use core::{

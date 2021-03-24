@@ -66,7 +66,7 @@ pub enum AdiEncoderError {
     PortsOutOfRange,
     /// Ports cannot be configured as an ADI encoder.
     PortsNotAdiEncoder,
-    /// Ports are from non matching extenders
+    /// Ports are from non matching extenders.
     PortNonMatchingExtenders,
     /// Unknown error.
     Unknown(i32),

@@ -339,6 +339,7 @@ impl Task {
     /// Unsafely deletes the task.
     ///
     /// # Safety
+    ///
     /// This is unsafe because it does not guarantee that the task's code safely
     /// unwinds (i.e., that destructors are called, memory is freed and other
     /// resources are released).

@@ -275,9 +275,9 @@ pub enum InertialSensorError {
     PortOutOfRange,
     /// Port cannot be configured as a inertial sensor.
     PortNotInertialSensor,
-    /// The sensor is already calibrating
+    /// The sensor is already calibrating.
     SensorAlreadyCalibrating,
-    /// The sensor returned an unknown status code
+    /// The sensor returned an unknown status code.
     UnknownStatusCode(u32),
     /// Unknown error.
     Unknown(i32),
@@ -312,40 +312,40 @@ impl From<InertialSensorError> for Error {
     }
 }
 
-/// Represents raw values returned from an inertial sensor
+/// Represents raw values returned from an inertial sensor.
 pub struct InertialSensorRaw {
-    /// The raw x value returned from the inertial sensor
+    /// The raw x value returned from the inertial sensor.
     pub x: f64,
-    /// The raw y value returned from the inertial sensor
+    /// The raw y value returned from the inertial sensor.
     pub y: f64,
-    /// The raw z value returned from the inertial sensor
+    /// The raw z value returned from the inertial sensor.
     pub z: f64,
 }
 
-/// Represents a Quaternion returned from an inertial sensor
+/// Represents a Quaternion returned from an inertial sensor.
 pub struct InertialSensorQuaternion {
-    /// The x value of the Quaternion
+    /// The x value of the Quaternion.
     pub x: f64,
-    /// The y value of the Quaternion
+    /// The y value of the Quaternion.
     pub y: f64,
-    /// The z value of the Quaternion
+    /// The z value of the Quaternion.
     pub z: f64,
-    /// The w value of the Quaternion
+    /// The w value of the Quaternion.
     pub w: f64,
 }
 
-/// Represents the set of euler angles returned from an inertial sensor
+/// Represents the set of euler angles returned from an inertial sensor.
 pub struct InertialSensorEuler {
-    /// The counterclockwise rotation on the y axis
+    /// The counterclockwise rotation on the y axis.
     pub pitch: f64,
-    /// The counterclockwise rotation on the x axis
+    /// The counterclockwise rotation on the x axis.
     pub roll: f64,
-    /// The counterclockwise rotation on the z axis
+    /// The counterclockwise rotation on the z axis.
     pub yaw: f64,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-/// Indicates IMU status
+/// Indicates IMU status.
 pub struct InertialSensorStatus(bindings::imu_status_e);
 impl InertialSensorStatus {
     #[inline]
