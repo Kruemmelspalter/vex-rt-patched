@@ -3,7 +3,9 @@
 mod encoder;
 mod expander;
 mod port;
+mod ultrasonic;
 
 pub use encoder::*;
 pub use expander::*;
 pub use port::*;
+pub use ultrasonic::*;
