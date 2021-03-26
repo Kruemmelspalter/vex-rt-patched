@@ -1,6 +1,6 @@
 //! ADIPort.
 
-use super::encoder::{AdiEncoder, AdiEncoderError};
+use super::{AdiEncoder, AdiEncoderError, AdiUltrasonic, AdiUltrasonicError};
 
 use crate::bindings;
 use core::cmp::Ordering;
@@ -77,6 +77,18 @@ impl TryFrom<(AdiPort, AdiPort)> for AdiEncoder {
                 reversed,
                 top_port.expander_port,
             )
+        }
+    }
+}
+
+impl TryFrom<(AdiPort, AdiPort)> for AdiUltrasonic {
+    type Error = AdiUltrasonicError;
+
+    fn try_from(ports: (AdiPort, AdiPort)) -> Result<Self, Self::Error> {
+        if ports.0.expander_port != ports.1.expander_port {
+            Err(AdiUltrasonicError::PortNonMatchingExtenders)
+        } else {
+            unsafe { AdiUltrasonic::new(ports.0.port, ports.1.port, ports.0.expander_port) }
         }
     }
 }
