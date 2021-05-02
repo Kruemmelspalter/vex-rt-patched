@@ -16,7 +16,7 @@ const PROS_WRAPPER_STR: &str = "build/wrapper.h";
 const WHITELISTED_TYPES: &[&str] = &[];
 
 // Enums to be treated as bitfields/bitflags by bindgen
-const BITFIELD_ENUMS: &[&str] = &[];
+const BITFIELD_ENUMS: &[&str] = &["ext_adi_port_config_e"];
 
 // Functions to be included by bindgen
 const WHITELISTED_FUNCS: &[&str] = &[
@@ -26,10 +26,15 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "distance_get_confidence",
     "distance_get_object_size",
     "distance_get_object_velocity",
+    "ext_adi_analog_calibrate",
+    "ext_adi_analog_read",
+    "ext_adi_analog_read_calibrated",
+    "ext_adi_analog_read_calibrated_HR",
     "ext_adi_encoder_get",
     "ext_adi_encoder_init",
     "ext_adi_encoder_reset",
     "ext_adi_encoder_shutdown",
+    "ext_adi_port_set_config",
     "ext_adi_ultrasonic_get",
     "ext_adi_ultrasonic_init",
     "ext_adi_ultrasonic_shutdown",
