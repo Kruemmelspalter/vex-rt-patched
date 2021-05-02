@@ -1,6 +1,8 @@
 //! ADIPort.
 
-use super::{AdiEncoder, AdiEncoderError, AdiUltrasonic, AdiUltrasonicError};
+use super::{
+    AdiAnalog, AdiAnalogError, AdiEncoder, AdiEncoderError, AdiUltrasonic, AdiUltrasonicError,
+};
 
 use crate::bindings;
 use core::cmp::Ordering;
@@ -35,6 +37,15 @@ impl AdiPort {
             port,
             expander_port,
         }
+    }
+}
+
+impl TryFrom<AdiPort> for AdiAnalog {
+    type Error = AdiAnalogError;
+
+    /// Converts a `AdiPort` into a [`AdiAnalog`].
+    fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
+        unsafe { AdiAnalog::new(port.port, port.expander_port) }
     }
 }
 
