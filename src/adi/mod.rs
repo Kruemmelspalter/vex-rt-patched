@@ -3,11 +3,13 @@
 mod analog;
 mod encoder;
 mod expander;
+mod gyro;
 mod port;
 mod ultrasonic;
 
 pub use analog::*;
 pub use encoder::*;
 pub use expander::*;
+pub use gyro::*;
 pub use port::*;
 pub use ultrasonic::*;

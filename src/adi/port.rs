@@ -1,12 +1,13 @@
 //! ADIPort.
 
 use super::{
-    AdiAnalog, AdiAnalogError, AdiEncoder, AdiEncoderError, AdiUltrasonic, AdiUltrasonicError,
+    AdiAnalog, AdiAnalogError, AdiEncoder, AdiEncoderError, AdiGyro, AdiGyroError, AdiUltrasonic,
+    AdiUltrasonicError,
 };
 
 use crate::bindings;
 use core::cmp::Ordering;
-use core::convert::TryFrom;
+use core::convert::{TryFrom, TryInto};
 
 /// A struct which represents an unconfigured ADI port.
 pub struct AdiPort {
@@ -37,6 +38,30 @@ impl AdiPort {
             port,
             expander_port,
         }
+    }
+
+    /// Turns this port into an ADI analog
+    #[inline]
+    pub fn into_adi_analog(self) -> Result<AdiAnalog, AdiAnalogError> {
+        self.try_into()
+    }
+
+    /// Turns this and another port into an encoder
+    #[inline]
+    pub fn into_adi_encoder(self, bottom: Self) -> Result<AdiEncoder, AdiEncoderError> {
+        (self, bottom).try_into()
+    }
+
+    /// Turns this port into a gyro
+    #[inline]
+    pub fn into_adi_gyro(self, multiplier: f64) -> Result<AdiGyro, AdiGyroError> {
+        (self, multiplier).try_into()
+    }
+
+    /// Turns this and another port into an ultrasonic sensor
+    #[inline]
+    pub fn into_adi_ultrasonic(self, bottom: Self) -> Result<AdiUltrasonic, AdiUltrasonicError> {
+        (self, bottom).try_into()
     }
 }
 
@@ -87,6 +112,21 @@ impl TryFrom<(AdiPort, AdiPort)> for AdiEncoder {
                 bottom_port.port,
                 reversed,
                 top_port.expander_port,
+            )
+        }
+    }
+}
+
+impl TryFrom<(AdiPort, f64)> for AdiGyro {
+    type Error = AdiGyroError;
+
+    #[inline]
+    fn try_from(port_multiplier: (AdiPort, f64)) -> Result<Self, Self::Error> {
+        unsafe {
+            AdiGyro::new(
+                port_multiplier.0.port,
+                port_multiplier.1,
+                port_multiplier.0.expander_port,
             )
         }
     }
