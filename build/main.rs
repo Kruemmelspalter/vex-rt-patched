@@ -227,7 +227,7 @@ fn generate_bindings(
         .layout_tests(false);
 
     for t in WHITELISTED_TYPES {
-        bindings = bindings.whitelist_type(t);
+        bindings = bindings.allowlist_type(t);
     }
 
     for t in BITFIELD_ENUMS {
@@ -235,11 +235,11 @@ fn generate_bindings(
     }
 
     for f in WHITELISTED_FUNCS {
-        bindings = bindings.whitelist_function(f);
+        bindings = bindings.allowlist_function(f);
     }
 
     for v in WHITELISTED_VARS {
-        bindings = bindings.whitelist_var(v);
+        bindings = bindings.allowlist_var(v);
     }
 
     bindings
