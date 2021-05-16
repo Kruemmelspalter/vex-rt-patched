@@ -25,6 +25,10 @@ by_address = "1.0.4"
 owner-monad = "0.1.0"
 raii-map = "0.1.0"
 queue-model = "0.1.2"
+bitflags = "1.2.1"
+atomic_swapping = "0.1.0"
+concurrency_traits = { version = "0.5.2", default-features = false, features = ["alloc", "nightly"] }
+single_executor = { version = "0.1.0", default-features = false, features = ["nightly"] }
 
 [build-dependencies]
 bindgen = "0.58.0"

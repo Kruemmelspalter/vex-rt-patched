@@ -8,6 +8,7 @@ use crate::{
 };
 
 /// Represents a Vex controller.
+#[derive(Debug)]
 pub struct Controller {
     /// The left analog stick.
     pub left_stick: AnalogStick,
@@ -113,6 +114,7 @@ impl Controller {
 }
 
 /// Represents one of two analog sticks on a Vex controller.
+#[derive(Debug)]
 pub struct AnalogStick {
     id: bindings::controller_id_e_t,
     x_channel: bindings::controller_analog_e_t,
@@ -151,6 +153,7 @@ impl AnalogStick {
 }
 
 /// Represents a button on a Vex controller.
+#[derive(Debug)]
 pub struct Button {
     id: bindings::controller_id_e_t,
     button: bindings::controller_digital_e_t,
@@ -169,6 +172,7 @@ impl Button {
 }
 
 /// Represents the two types of controller.
+#[derive(Copy, Clone, Debug)]
 pub enum ControllerId {
     /// The primary controller.
     Master,

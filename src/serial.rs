@@ -8,6 +8,7 @@ use crate::{
 };
 
 /// Represents the generic serial interface of a smart port.
+#[derive(Debug)]
 pub struct Serial(u8);
 
 impl Serial {

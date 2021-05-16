@@ -10,6 +10,7 @@ use core::cmp::Ordering;
 use core::convert::{TryFrom, TryInto};
 
 /// A struct which represents an unconfigured ADI port.
+#[derive(Debug)]
 pub struct AdiPort {
     port: u8,
     expander_port: u8,

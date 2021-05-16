@@ -6,6 +6,7 @@ use super::{handle_event, Event, EventHandle, GenericSleep, Instant, Mutex, Sele
 use crate::error::Error;
 
 /// Represents the sending end of a message-passing queue.
+#[allow(missing_debug_implementations)]
 pub struct SendQueue<T>(Arc<dyn QueueShared<T> + Send + Sync>);
 
 impl<T> SendQueue<T> {
@@ -23,6 +24,7 @@ impl<T> Clone for SendQueue<T> {
 }
 
 /// Represents the receive end of a message-passing queue.
+#[allow(missing_debug_implementations)]
 pub struct ReceiveQueue<T>(Arc<dyn QueueShared<T> + Send + Sync>);
 
 impl<T> ReceiveQueue<T> {

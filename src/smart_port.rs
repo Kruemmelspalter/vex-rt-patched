@@ -9,6 +9,7 @@ use crate::{
 };
 
 /// A struct which represents an unconfigured smart port.
+#[derive(Debug)]
 pub struct SmartPort {
     port: u8,
 }

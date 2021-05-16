@@ -4,6 +4,7 @@ use super::port::AdiPort;
 use crate::bindings;
 
 /// A struct which represents a V5 ADI expander.
+#[derive(Debug)]
 pub struct AdiExpander {
     /// ADI Port 1 / A.
     pub port_a: AdiPort,

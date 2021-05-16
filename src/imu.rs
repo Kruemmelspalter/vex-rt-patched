@@ -7,6 +7,7 @@ use crate::{
 use alloc::format;
 
 /// A struct which represents a V5 smart port configured as a inertial sensor.
+#[derive(Debug)]
 pub struct InertialSensor {
     port: u8,
 }
@@ -313,6 +314,7 @@ impl From<InertialSensorError> for Error {
 }
 
 /// Represents raw values returned from an inertial sensor.
+#[derive(Copy, Clone, Debug)]
 pub struct InertialSensorRaw {
     /// The raw x value returned from the inertial sensor.
     pub x: f64,
@@ -323,6 +325,7 @@ pub struct InertialSensorRaw {
 }
 
 /// Represents a Quaternion returned from an inertial sensor.
+#[derive(Copy, Clone, Debug)]
 pub struct InertialSensorQuaternion {
     /// The x value of the Quaternion.
     pub x: f64,
@@ -335,6 +338,7 @@ pub struct InertialSensorQuaternion {
 }
 
 /// Represents the set of euler angles returned from an inertial sensor.
+#[derive(Copy, Clone, Debug)]
 pub struct InertialSensorEuler {
     /// The counterclockwise rotation on the y axis.
     pub pitch: f64,
@@ -344,8 +348,8 @@ pub struct InertialSensorEuler {
     pub yaw: f64,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
 /// Indicates IMU status.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct InertialSensorStatus(bindings::imu_status_e);
 impl InertialSensorStatus {
     #[inline]

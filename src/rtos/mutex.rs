@@ -7,6 +7,7 @@ use core::{
 use crate::{bindings, error::*};
 
 use super::TIMEOUT_MAX;
+use core::marker::PhantomData;
 
 /// Represents an object which is protected by a FreeRTOS recursive mutex.
 pub struct Mutex<T: ?Sized> {
@@ -63,7 +64,7 @@ impl<T: ?Sized> Mutex<T> {
     /// more thorough behavioural description.
     pub fn try_lock(&'_ self) -> Result<MutexGuard<'_, T>, Error> {
         if unsafe { bindings::mutex_recursive_take(self.mutex, TIMEOUT_MAX) } {
-            Ok(MutexGuard(self))
+            Ok(MutexGuard(self, Default::default()))
         } else {
             Err(from_errno())
         }
@@ -74,7 +75,7 @@ impl<T: ?Sized> Mutex<T> {
     /// mutex, if it is available immediately. Does not block.
     pub fn poll(&'_ self) -> Option<MutexGuard<'_, T>> {
         if unsafe { bindings::mutex_recursive_take(self.mutex, 0) } {
-            Some(MutexGuard(self))
+            Some(MutexGuard(self, Default::default()))
         } else {
             None
         }
@@ -134,7 +135,7 @@ impl<T> From<T> for Mutex<T> {
 /// out of scope. Rust's object and reference lifetime rules prevent safe code
 /// from retaining access to the [`Mutex`] object's internal data beyond the
 /// lifetime of the guard object.
-pub struct MutexGuard<'a, T: ?Sized>(&'a Mutex<T>);
+pub struct MutexGuard<'a, T: ?Sized>(&'a Mutex<T>, PhantomData<*const T>);
 
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
@@ -175,6 +176,4 @@ impl<T: ?Sized + Display> Display for MutexGuard<'_, T> {
     }
 }
 
-impl<T: ?Sized> !Send for MutexGuard<'_, T> {}
-
-unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
+unsafe impl<'a, T: ?Sized + Sync> Sync for MutexGuard<'a, T> where &'a Mutex<T>: Sync {}
