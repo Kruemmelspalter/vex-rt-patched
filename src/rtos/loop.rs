@@ -3,6 +3,7 @@ use core::time::Duration;
 use super::{time_since_start, GenericSleep, Instant, Selectable, Task};
 
 /// Provides a constant-period looping construct.
+#[derive(Debug)]
 pub struct Loop {
     delta: Duration,
     next: Instant,

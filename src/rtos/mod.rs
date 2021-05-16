@@ -290,7 +290,12 @@ impl Task {
     #[inline]
     /// Spawns a new task from a C function pointer and an arbitrary data
     /// pointer.
-    pub fn spawn_raw(
+    ///
+    /// # Safety
+    /// This function spawns a task using raw c pointers. These are inherently
+    /// unsafe. The arg passed must meet the requirements of the called
+    /// function.
+    pub unsafe fn spawn_raw(
         name: &str,
         priority: u32,
         stack_depth: u16,
@@ -346,6 +351,32 @@ impl Task {
     pub unsafe fn delete(&self) {
         bindings::task_delete(self.0)
     }
+
+    #[allow(dead_code)] // TODO: Remove when used
+    /// Notifies the task, incrementing the notification counter
+    pub(crate) fn notify(&self) {
+        unsafe {
+            bindings::task_notify(self.0);
+        }
+    }
+
+    /// Waits for notifications on the current task, returning the number before
+    /// decrement or clear. If clear is false will decrement notification
+    /// number instead of setting to 0;
+    pub(crate) fn notify_take(clear: bool, timeout: Option<Duration>) -> u32 {
+        unsafe {
+            bindings::task_notify_take(
+                clear,
+                timeout.map_or(TIMEOUT_MAX, |timeout| timeout.as_millis() as u32),
+            )
+        }
+    }
+
+    /// Clears the notifications for this task returning true if there were
+    /// notifications
+    pub fn clear_notifications(&self) -> bool {
+        unsafe { bindings::task_notify_clear(self.0) }
+    }
 }
 
 impl Debug for Task {
@@ -362,6 +393,7 @@ unsafe impl Send for Task {}
 unsafe impl Sync for Task {}
 
 /// Represents the state of a [`Task`].
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TaskState {
     /// The task is actively executing.
     Running,
@@ -541,6 +573,8 @@ pub fn delay_until(timestamp: Instant) -> impl Selectable {
 
     DelaySelect(timestamp)
 }
+
+pub mod free_rtos;
 
 mod broadcast;
 mod channel;

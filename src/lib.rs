@@ -2,9 +2,7 @@
 
 #![no_std]
 #![feature(alloc_error_handler)]
-#![feature(negative_impls)]
-#![feature(unsafe_cell_raw_get)]
-#![warn(missing_docs)]
+#![warn(missing_docs, unused_import_braces, missing_debug_implementations)]
 
 extern crate alloc;
 
@@ -40,3 +38,8 @@ fn panic(panic_info: &PanicInfo) -> ! {
         libc::exit(1);
     }
 }
+
+/// Used to ensure a type is [`Send`] and give a compiler error if it isn't
+trait EnsureSend: Send {}
+/// Used to ensure a type is [`Sync`] and give a compiler error if it isn't
+trait EnsureSync: Sync {}

@@ -6,6 +6,7 @@ use crate::{
 };
 
 /// Represents a FreeRTOS counting semaphore.
+#[derive(Debug)]
 pub struct Semaphore(bindings::sem_t);
 
 impl Semaphore {
