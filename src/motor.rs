@@ -1,5 +1,20 @@
 //! # Motor API.
 
+use uom::si::{
+    angle::revolution,
+    angular_velocity::revolution_per_minute,
+    electric_current::milliampere,
+    electric_potential::{millivolt, volt},
+    f64::{
+        Angle, AngularVelocity, ElectricCurrent, Power, Ratio, ThermodynamicTemperature, Torque,
+    },
+    power::watt,
+    quantities::ElectricPotential,
+    ratio::percent,
+    thermodynamic_temperature::degree_celsius,
+    torque::newton_meter,
+};
+
 use crate::{
     bindings,
     error::{get_errno, Error},
@@ -19,16 +34,14 @@ impl Motor {
     /// This function is unsafe because it allows the user to create multiple
     /// mutable references to the same motor. You likely want to implement
     /// [`Robot::new()`](crate::robot::Robot::new()) instead.
-    pub unsafe fn new(
-        port: u8,
-        gearset: Gearset,
-        encoder_units: EncoderUnits,
-        reverse: bool,
-    ) -> Motor {
-        let mut motor = Motor { port };
+    pub unsafe fn new(port: u8, gearset: Gearset, reverse: bool) -> Self {
+        let mut motor = Self { port };
         motor.set_reversed(reverse).unwrap();
         motor.set_gearing(gearset).unwrap();
-        motor.set_encoder_units(encoder_units).unwrap();
+        bindings::motor_set_encoder_units(
+            port,
+            bindings::motor_encoder_units_e_E_MOTOR_ENCODER_ROTATIONS,
+        );
         motor
     }
 
@@ -52,8 +65,18 @@ impl Motor {
     ///
     /// **Note:** This function simply sets the target for the motor, it does
     /// not block program execution until the movement finishes.
-    pub fn move_absolute(&mut self, position: f64, velocity: i32) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_move_absolute(self.port, position, velocity) } {
+    pub fn move_absolute(
+        &mut self,
+        position: Angle,
+        velocity: AngularVelocity,
+    ) -> Result<(), MotorError> {
+        match unsafe {
+            bindings::motor_move_absolute(
+                self.port,
+                position.get::<revolution>(),
+                velocity.get::<revolution_per_minute>() as i32,
+            )
+        } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -62,14 +85,24 @@ impl Motor {
     /// Sets the relative target position for the motor to move to.
     ///
     /// This movement is relative to the current position of the motor as given
-    /// in [`Motor::get_position()`]. Providing 10.0 as the position parameter
-    /// would result in the motor moving clockwise 10 ticks, no matter what
-    /// the current position is.
+    /// in [`Motor::get_position()`]. Providing 10 degrees as the position
+    /// parameter would result in the motor moving clockwise by 10 degrees,
+    /// no matter what the current position is.
     ///
     /// **Note:** This function simply sets the target for the motor, it does
     /// not block program execution until the movement finishes.
-    pub fn move_relative(&mut self, position: f64, velocity: i32) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_move_relative(self.port, position, velocity) } {
+    pub fn move_relative(
+        &mut self,
+        position: Angle,
+        velocity: AngularVelocity,
+    ) -> Result<(), MotorError> {
+        match unsafe {
+            bindings::motor_move_relative(
+                self.port,
+                position.get::<revolution>(),
+                velocity.get::<revolution_per_minute>() as i32,
+            )
+        } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -78,21 +111,23 @@ impl Motor {
     /// Sets the velocity for the motor.
     ///
     /// This velocity corresponds to different actual speeds depending on the
-    /// gearset used for the motor. This results in a range of ±100 for
-    /// [`Gearset::ThirtySixToOne`] ±200 for [`Gearset::EighteenToOne`] and ±600
-    /// for [`Gearset::SixToOne`]. The velocity is held with PID to ensure
-    /// consistent speed.
-    pub fn move_velocity(&mut self, velocity: i32) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_move_velocity(self.port, velocity) } {
+    /// gearset used for the motor. This results in a range of ±100 RPM for
+    /// [`Gearset::ThirtySixToOne`] ±200 RPM for [`Gearset::EighteenToOne`] and
+    /// ±600 RPM for [`Gearset::SixToOne`]. The velocity is held with PID to
+    /// ensure consistent speed.
+    pub fn move_velocity(&mut self, velocity: AngularVelocity) -> Result<(), MotorError> {
+        match unsafe {
+            bindings::motor_move_velocity(self.port, velocity.get::<revolution_per_minute>() as i32)
+        } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
     }
 
-    /// Sets the output voltage for the motor from -12000 to 12000 in
-    /// millivolts.
-    pub fn move_voltage(&mut self, voltage: i32) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_move_voltage(self.port, voltage) } {
+    /// Sets the output voltage for the motor from -12 V to 12 V.
+    pub fn move_voltage(&mut self, voltage: ElectricPotential<f64>) -> Result<(), MotorError> {
+        match unsafe { bindings::motor_move_voltage(self.port, voltage.get::<millivolt>() as i32) }
+        {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -101,42 +136,50 @@ impl Motor {
     /// Changes the output velocity for a profiled movement
     /// ([`Motor::move_absolute()`] or [`Motor::move_relative()`]). This
     /// will have no effect if the motor is not following a profiled movement.
-    pub fn modify_profiled_velocity(&mut self, velocity: i32) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_modify_profiled_velocity(self.port, velocity) } {
+    pub fn modify_profiled_velocity(
+        &mut self,
+        velocity: AngularVelocity,
+    ) -> Result<(), MotorError> {
+        match unsafe {
+            bindings::motor_modify_profiled_velocity(
+                self.port,
+                velocity.get::<revolution_per_minute>() as i32,
+            )
+        } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
     }
 
     /// Gets the target position set for the motor by the user.
-    pub fn get_target_position(&self) -> Result<f64, MotorError> {
+    pub fn get_target_position(&self) -> Result<Angle, MotorError> {
         match unsafe { bindings::motor_get_target_position(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Angle::new::<revolution>(x)),
         }
     }
 
     /// Gets the velocity commanded to the motor by the user.
-    pub fn get_target_velocity(&self) -> Result<i32, MotorError> {
+    pub fn get_target_velocity(&self) -> Result<AngularVelocity, MotorError> {
         match unsafe { bindings::motor_get_target_velocity(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(AngularVelocity::new::<revolution_per_minute>(x as f64)),
         }
     }
 
     /// Gets the actual velocity of the motor.
-    pub fn get_actual_velocity(&self) -> Result<f64, MotorError> {
+    pub fn get_actual_velocity(&self) -> Result<AngularVelocity, MotorError> {
         match unsafe { bindings::motor_get_actual_velocity(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(AngularVelocity::new::<revolution_per_minute>(x)),
         }
     }
 
-    /// Gets the current drawn by the motor in milliamperes.
-    pub fn get_current_draw(&self) -> Result<i32, MotorError> {
+    /// Gets the current drawn by the motor.
+    pub fn get_current_draw(&self) -> Result<ElectricCurrent, MotorError> {
         match unsafe { bindings::motor_get_current_draw(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(ElectricCurrent::new::<milliampere>(x as f64)),
         }
     }
 
@@ -153,51 +196,51 @@ impl Motor {
         }
     }
 
-    /// Gets the efficiency of the motor in percent.
-    pub fn get_efficiency(&self) -> Result<f64, MotorError> {
+    /// Gets the efficiency of the motor.
+    pub fn get_efficiency(&self) -> Result<Ratio, MotorError> {
         match unsafe { bindings::motor_get_efficiency(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Ratio::new::<percent>(x)),
         }
     }
 
-    /// Gets the absolute position of the motor in encoder ticks.
-    pub fn get_position(&self) -> Result<f64, MotorError> {
+    /// Gets the absolute position of the motor.
+    pub fn get_position(&self) -> Result<Angle, MotorError> {
         match unsafe { bindings::motor_get_position(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Angle::new::<revolution>(x)),
         }
     }
 
-    /// Gets the power drawn by the motor in Watts.
-    pub fn get_power(&self) -> Result<f64, MotorError> {
+    /// Gets the power drawn by the motor.
+    pub fn get_power(&self) -> Result<Power, MotorError> {
         match unsafe { bindings::motor_get_power(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Power::new::<watt>(x)),
         }
     }
 
-    /// Gets the temperature of the motor in degrees Celsius.
-    pub fn get_temperature(&self) -> Result<f64, MotorError> {
+    /// Gets the temperature of the motor.
+    pub fn get_temperature(&self) -> Result<ThermodynamicTemperature, MotorError> {
         match unsafe { bindings::motor_get_temperature(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(ThermodynamicTemperature::new::<degree_celsius>(x)),
         }
     }
 
-    /// Gets the torque of the motor in Newton-Meters.
-    pub fn get_torque(&self) -> Result<f64, MotorError> {
+    /// Gets the torque of the motor.
+    pub fn get_torque(&self) -> Result<Torque, MotorError> {
         match unsafe { bindings::motor_get_torque(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Torque::new::<newton_meter>(x)),
         }
     }
 
-    /// Gets the voltage delivered to the motor in millivolts.
-    pub fn get_voltage(&self) -> Result<i32, MotorError> {
+    /// Gets the voltage delivered to the motor.
+    pub fn get_voltage(&self) -> Result<ElectricPotential<f64>, MotorError> {
         match unsafe { bindings::motor_get_voltage(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(ElectricPotential::new::<millivolt>(x as f64)),
         }
     }
 
@@ -233,14 +276,14 @@ impl Motor {
         }
     }
 
-    /// Gets the current limit for the motor in milliamperes.
+    /// Gets the current limit for the motor.
     ///
-    /// The default value is 2500 milliamperes, however the effective limit may
-    /// be lower if more then 8 motors are competing for power.
-    pub fn get_current_limit(&self) -> Result<i32, MotorError> {
+    /// The default value is 2.5 A, however the effective limit may be lower if
+    /// more then 8 motors are competing for power.
+    pub fn get_current_limit(&self) -> Result<ElectricCurrent, MotorError> {
         match unsafe { bindings::motor_get_current_limit(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(ElectricCurrent::new::<milliampere>(x as f64)),
         }
     }
 
@@ -258,14 +301,14 @@ impl Motor {
         }
     }
 
-    /// Gets the voltage limit set by the user in volts.
+    /// Gets the voltage limit set by the user.
     ///
     /// Default value is 0V, which means that there is no software limitation
     /// imposed on the voltage.
-    pub fn get_voltage_limit(&self) -> Result<i32, MotorError> {
+    pub fn get_voltage_limit(&self) -> Result<ElectricPotential<i32>, MotorError> {
         match unsafe { bindings::motor_get_voltage_limit(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(x),
+            x => Ok(ElectricPotential::new::<volt>(x)),
         }
     }
 
@@ -288,9 +331,11 @@ impl Motor {
         }
     }
 
-    /// Sets the current limit for the motor in milliamperes.
-    pub fn set_current_limit(&mut self, limit: i32) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_set_current_limit(self.port, limit) } {
+    /// Sets the current limit for the motor.
+    pub fn set_current_limit(&mut self, limit: ElectricCurrent) -> Result<(), MotorError> {
+        match unsafe {
+            bindings::motor_set_current_limit(self.port, limit.get::<milliampere>() as i32)
+        } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -314,17 +359,18 @@ impl Motor {
         }
     }
 
-    /// Sets the voltage limit for the motor in Volts.
-    pub fn set_voltage_limit(&mut self, limit: i32) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_set_voltage_limit(self.port, limit) } {
+    /// Sets the voltage limit for the motor.
+    pub fn set_voltage_limit(&mut self, limit: ElectricPotential<i32>) -> Result<(), MotorError> {
+        match unsafe { bindings::motor_set_voltage_limit(self.port, limit.get::<volt>()) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
     }
 
     /// Sets the "absolute" zero position of the motor.
-    pub fn set_zero_position(&mut self, position: f64) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_set_zero_position(self.port, position) } {
+    pub fn set_zero_position(&mut self, position: Angle) -> Result<(), MotorError> {
+        match unsafe { bindings::motor_set_zero_position(self.port, position.get::<revolution>()) }
+        {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -335,31 +381,6 @@ impl Motor {
         match unsafe { bindings::motor_tare_position(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
-        }
-    }
-
-    /// Sets the [`EncoderUnits`] for the motor.
-    pub fn set_encoder_units(&mut self, units: EncoderUnits) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_set_encoder_units(self.port, units.into()) } {
-            bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            _ => Ok(()),
-        }
-    }
-
-    /// Gets the [`EncoderUnits`] set for the motor.
-    pub fn get_encoder_units(&self) -> Result<EncoderUnits, MotorError> {
-        match unsafe { bindings::motor_get_encoder_units(self.port) } {
-            bindings::motor_encoder_units_e_E_MOTOR_ENCODER_COUNTS => {
-                Ok(EncoderUnits::EncoderTicks)
-            }
-            bindings::motor_encoder_units_e_E_MOTOR_ENCODER_DEGREES => Ok(EncoderUnits::Degrees),
-            bindings::motor_encoder_units_e_E_MOTOR_ENCODER_ROTATIONS => {
-                Ok(EncoderUnits::Rotations)
-            }
-            bindings::motor_encoder_units_e_E_MOTOR_ENCODER_INVALID => {
-                Err(MotorError::from_errno())
-            }
-            x => panic!("bindings:get_encoder_units returned unexpected value {}", x),
         }
     }
 }
@@ -444,28 +465,4 @@ pub enum Direction {
     Positive,
     /// The negative direction.
     Negative,
-}
-
-/// Represents the possible encoder units.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum EncoderUnits {
-    /// The number of ticks of the internal motor encoder.
-    /// - 300 ticks/rev with [`Gearset::SixToOne`].
-    /// - 900 ticks/rev with [`Gearset::EighteenToOne`].
-    /// - 1800 ticks/rev with [`Gearset::ThirtySixToOne`].
-    EncoderTicks,
-    /// Degrees.
-    Degrees,
-    /// Rotations.
-    Rotations,
-}
-
-impl From<EncoderUnits> for bindings::motor_encoder_units_e {
-    fn from(units: EncoderUnits) -> Self {
-        match units {
-            EncoderUnits::EncoderTicks => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_COUNTS,
-            EncoderUnits::Degrees => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_DEGREES,
-            EncoderUnits::Rotations => bindings::motor_encoder_units_e_E_MOTOR_ENCODER_ROTATIONS,
-        }
-    }
 }

@@ -5,6 +5,12 @@ use crate::{
     error::{get_errno, Error},
 };
 use alloc::format;
+use uom::si::{
+    acceleration::meter_per_second_squared,
+    angle::degree,
+    angular_velocity::degree_per_second,
+    f64::{Acceleration, Angle, AngularVelocity},
+};
 
 /// A struct which represents a V5 smart port configured as a inertial sensor.
 #[derive(Debug)]
@@ -35,29 +41,28 @@ impl InertialSensor {
         }
     }
 
-    /// Get the total number of degrees the Inertial Sensor has spun about the
-    /// z-axis.
+    /// Get the total angle that the Inertial Sensor has spun about the z-axis.
     ///
     /// This value is theoretically unbounded. Clockwise rotations are
-    /// represented with positive degree values, while counterclockwise
-    /// rotations are represented with negative ones.
-    pub fn get_rotation(&self) -> Result<f64, InertialSensorError> {
+    /// represented with positive values, while counterclockwise rotations are
+    /// represented with negative ones.
+    pub fn get_rotation(&self) -> Result<Angle, InertialSensorError> {
         match unsafe { bindings::imu_get_rotation(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Angle::new::<degree>(x)),
         }
     }
 
     /// Get the Inertial Sensor’s heading relative to the initial direction of
     /// its x-axis.
     ///
-    /// This value is bounded by [0,360). Clockwise rotations are represented
-    /// with positive degree values, while counterclockwise rotations are
+    /// This value is bounded by [0,360) in degrees. Clockwise rotations are
+    /// represented with positive values, while counterclockwise rotations are
     /// represented with negative ones.
-    pub fn get_heading(&self) -> Result<f64, InertialSensorError> {
+    pub fn get_heading(&self) -> Result<Angle, InertialSensorError> {
         match unsafe { bindings::imu_get_heading(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Angle::new::<degree>(x)),
         }
     }
 
@@ -79,57 +84,57 @@ impl InertialSensor {
         match unsafe { bindings::imu_get_euler(self.port) } {
             x if x.pitch == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
             x => Ok(InertialSensorEuler {
-                pitch: x.pitch,
-                roll: x.roll,
-                yaw: x.yaw,
+                pitch: Angle::new::<degree>(x.pitch),
+                roll: Angle::new::<degree>(x.roll),
+                yaw: Angle::new::<degree>(x.yaw),
             }),
         }
     }
 
-    /// Get the Inertial Sensor’s pitch angle bounded by (-180,180).
-    pub fn get_pitch(&self) -> Result<f64, InertialSensorError> {
+    /// Get the Inertial Sensor’s pitch angle bounded by (-180,180) degrees.
+    pub fn get_pitch(&self) -> Result<Angle, InertialSensorError> {
         match unsafe { bindings::imu_get_pitch(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Angle::new::<degree>(x)),
         }
     }
 
-    /// Get the Inertial Sensor’s roll angle bounded by (-180,180).
-    pub fn get_roll(&self) -> Result<f64, InertialSensorError> {
+    /// Get the Inertial Sensor’s roll angle bounded by (-180,180) degrees.
+    pub fn get_roll(&self) -> Result<Angle, InertialSensorError> {
         match unsafe { bindings::imu_get_roll(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Angle::new::<degree>(x)),
         }
     }
 
-    /// Get the Inertial Sensor’s yaw angle bounded by (-180,180).
-    pub fn get_yaw(&self) -> Result<f64, InertialSensorError> {
+    /// Get the Inertial Sensor’s yaw angle bounded by (-180,180) degrees.
+    pub fn get_yaw(&self) -> Result<Angle, InertialSensorError> {
         match unsafe { bindings::imu_get_yaw(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
-            x => Ok(x),
+            x => Ok(Angle::new::<degree>(x)),
         }
     }
 
     /// Get the Inertial Sensor’s raw gyroscope values.
-    pub fn get_gyro_rate(&self) -> Result<InertialSensorRaw, InertialSensorError> {
+    pub fn get_gyro_rate(&self) -> Result<InertialSensorRawRate, InertialSensorError> {
         match unsafe { bindings::imu_get_gyro_rate(self.port) } {
             x if x.x == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
-            x => Ok(InertialSensorRaw {
-                x: x.x,
-                y: x.y,
-                z: x.z,
+            x => Ok(InertialSensorRawRate {
+                x: AngularVelocity::new::<degree_per_second>(x.x),
+                y: AngularVelocity::new::<degree_per_second>(x.y),
+                z: AngularVelocity::new::<degree_per_second>(x.z),
             }),
         }
     }
 
     /// Get the Inertial Sensor’s raw gyroscope values.
-    pub fn get_accel(&self) -> Result<InertialSensorRaw, InertialSensorError> {
+    pub fn get_accel(&self) -> Result<InertialSensorRawAccel, InertialSensorError> {
         match unsafe { bindings::imu_get_accel(self.port) } {
             x if x.x == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
-            x => Ok(InertialSensorRaw {
-                x: x.x,
-                y: x.y,
-                z: x.z,
+            x => Ok(InertialSensorRawAccel {
+                x: Acceleration::new::<meter_per_second_squared>(x.x),
+                y: Acceleration::new::<meter_per_second_squared>(x.y),
+                z: Acceleration::new::<meter_per_second_squared>(x.z),
             }),
         }
     }
@@ -211,9 +216,9 @@ impl InertialSensor {
             bindings::imu_set_euler(
                 self.port,
                 bindings::euler_s_t {
-                    pitch: euler.pitch,
-                    roll: euler.roll,
-                    yaw: euler.yaw,
+                    pitch: euler.pitch.get::<degree>(),
+                    roll: euler.roll.get::<degree>(),
+                    yaw: euler.yaw.get::<degree>(),
                 },
             )
         } {
@@ -224,45 +229,45 @@ impl InertialSensor {
 
     /// Sets the current reading of the Inertial Sensor’s rotation to target
     /// value.
-    pub fn set_rotation(&mut self, rotation: f64) -> Result<(), InertialSensorError> {
-        match unsafe { bindings::imu_set_rotation(self.port, rotation) } {
+    pub fn set_rotation(&mut self, rotation: Angle) -> Result<(), InertialSensorError> {
+        match unsafe { bindings::imu_set_rotation(self.port, rotation.get::<degree>()) } {
             bindings::PROS_ERR_ => Err(InertialSensorError::from_errno()),
             _ => Ok(()),
         }
     }
 
     /// Sets the current reading of the Inertial Sensor’s heading to target
-    /// value Target will default to 360 if above 360 and default to 0 if below
-    /// 0.
-    pub fn set_heading(&mut self, heading: f64) -> Result<(), InertialSensorError> {
-        match unsafe { bindings::imu_set_heading(self.port, heading) } {
+    /// value Target will default to 360 degrees if above 360 degrees and
+    /// default to 0 if below 0.
+    pub fn set_heading(&mut self, heading: Angle) -> Result<(), InertialSensorError> {
+        match unsafe { bindings::imu_set_heading(self.port, heading.get::<degree>()) } {
             bindings::PROS_ERR_ => Err(InertialSensorError::from_errno()),
             _ => Ok(()),
         }
     }
 
     /// Sets the current reading of the Inertial Sensor’s pitch to target value
-    /// Will default to +/- 180 if target exceeds +/- 180.
-    pub fn set_pitch(&mut self, pitch: f64) -> Result<(), InertialSensorError> {
-        match unsafe { bindings::imu_set_pitch(self.port, pitch) } {
+    /// Will default to +/- 180 degrees if target exceeds +/- 180 degrees.
+    pub fn set_pitch(&mut self, pitch: Angle) -> Result<(), InertialSensorError> {
+        match unsafe { bindings::imu_set_pitch(self.port, pitch.get::<degree>()) } {
             bindings::PROS_ERR_ => Err(InertialSensorError::from_errno()),
             _ => Ok(()),
         }
     }
 
     /// Sets the current reading of the Inertial Sensor’s roll to target value
-    /// Will default to +/- 180 if target exceeds +/- 180.
-    pub fn set_roll(&mut self, roll: f64) -> Result<(), InertialSensorError> {
-        match unsafe { bindings::imu_set_roll(self.port, roll) } {
+    /// Will default to +/- 180 degrees if target exceeds +/- 180 degrees.
+    pub fn set_roll(&mut self, roll: Angle) -> Result<(), InertialSensorError> {
+        match unsafe { bindings::imu_set_roll(self.port, roll.get::<degree>()) } {
             bindings::PROS_ERR_ => Err(InertialSensorError::from_errno()),
             _ => Ok(()),
         }
     }
 
     /// Sets the current reading of the Inertial Sensor’s yaw to target value
-    /// Will default to +/- 180 if target exceeds +/- 180.
-    pub fn set_yaw(&mut self, yaw: f64) -> Result<(), InertialSensorError> {
-        match unsafe { bindings::imu_set_yaw(self.port, yaw) } {
+    /// Will default to +/- 180 degrees if target exceeds +/- 180 degrees.
+    pub fn set_yaw(&mut self, yaw: Angle) -> Result<(), InertialSensorError> {
+        match unsafe { bindings::imu_set_yaw(self.port, yaw.get::<degree>()) } {
             bindings::PROS_ERR_ => Err(InertialSensorError::from_errno()),
             _ => Ok(()),
         }
@@ -313,15 +318,26 @@ impl From<InertialSensorError> for Error {
     }
 }
 
-/// Represents raw values returned from an inertial sensor.
+/// Represents raw rate values returned from an inertial sensor.
 #[derive(Copy, Clone, Debug)]
-pub struct InertialSensorRaw {
+pub struct InertialSensorRawRate {
     /// The raw x value returned from the inertial sensor.
-    pub x: f64,
+    pub x: AngularVelocity,
     /// The raw y value returned from the inertial sensor.
-    pub y: f64,
+    pub y: AngularVelocity,
     /// The raw z value returned from the inertial sensor.
-    pub z: f64,
+    pub z: AngularVelocity,
+}
+
+/// Represents raw acceleration values returned from an inertial sensor.
+#[derive(Copy, Clone, Debug)]
+pub struct InertialSensorRawAccel {
+    /// The raw x value returned from the inertial sensor.
+    pub x: Acceleration,
+    /// The raw y value returned from the inertial sensor.
+    pub y: Acceleration,
+    /// The raw z value returned from the inertial sensor.
+    pub z: Acceleration,
 }
 
 /// Represents a Quaternion returned from an inertial sensor.
@@ -341,11 +357,11 @@ pub struct InertialSensorQuaternion {
 #[derive(Copy, Clone, Debug)]
 pub struct InertialSensorEuler {
     /// The counterclockwise rotation on the y axis.
-    pub pitch: f64,
+    pub pitch: Angle,
     /// The counterclockwise rotation on the x axis.
-    pub roll: f64,
+    pub roll: Angle,
     /// The counterclockwise rotation on the z axis.
-    pub yaw: f64,
+    pub yaw: Angle,
 }
 
 /// Indicates IMU status.

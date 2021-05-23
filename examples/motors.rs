@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use uom::si::{angular_velocity::revolution_per_minute, f64::AngularVelocity};
 use vex_rt::prelude::*;
 
 struct DriveTrain {
@@ -11,27 +12,27 @@ struct DriveTrain {
 impl DriveTrain {
     fn new(left_drive_port: SmartPort, right_drive_port: SmartPort) -> Self {
         Self {
-            left_drive: left_drive_port.into_motor(
-                Gearset::EighteenToOne,
-                EncoderUnits::Degrees,
-                true,
-            ),
-            right_drive: right_drive_port.into_motor(
-                Gearset::EighteenToOne,
-                EncoderUnits::Degrees,
-                false,
-            ),
+            left_drive: left_drive_port.into_motor(Gearset::EighteenToOne, true),
+            right_drive: right_drive_port.into_motor(Gearset::EighteenToOne, false),
         }
     }
 
     fn spin(&mut self) {
-        self.left_drive.move_velocity(30).unwrap();
-        self.right_drive.move_velocity(-30).unwrap();
+        self.left_drive
+            .move_velocity(AngularVelocity::new::<revolution_per_minute>(30.0))
+            .unwrap();
+        self.right_drive
+            .move_velocity(AngularVelocity::new::<revolution_per_minute>(-30.0))
+            .unwrap();
     }
 
     fn stop(&mut self) {
-        self.left_drive.move_velocity(0).unwrap();
-        self.right_drive.move_velocity(0).unwrap();
+        self.left_drive
+            .move_velocity(AngularVelocity::new::<revolution_per_minute>(0.0))
+            .unwrap();
+        self.right_drive
+            .move_velocity(AngularVelocity::new::<revolution_per_minute>(0.0))
+            .unwrap();
     }
 }
 

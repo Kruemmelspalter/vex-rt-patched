@@ -26,16 +26,8 @@ impl Robot for ClawBot {
         ClawBot {
             controller: p.master_controller,
             drive_train: Mutex::new(DriveTrain {
-                left_motor: p.port01.into_motor(
-                    Gearset::EighteenToOne,
-                    EncoderUnits::Degrees,
-                    false,
-                ),
-                right_motor: p.port02.into_motor(
-                    Gearset::EighteenToOne,
-                    EncoderUnits::Degrees,
-                    true,
-                ),
+                left_motor: p.port01.into_motor(Gearset::EighteenToOne, false),
+                right_motor: p.port02.into_motor(Gearset::EighteenToOne, true),
             }),
         }
     }
