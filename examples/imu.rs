@@ -17,7 +17,7 @@ impl Robot for ImuBot {
     fn opcontrol(&'static self, ctx: Context) {
         let mut l = Loop::new(Duration::from_secs(1));
         loop {
-            println!("{}", self.sensor.get_heading().unwrap());
+            println!("{:#?}", self.sensor.get_heading().unwrap());
             select! {
                 _ = l.select() => {},
                 _ = ctx.done() => break,

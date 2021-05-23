@@ -17,7 +17,7 @@ impl Robot for DistanceBot {
     fn opcontrol(&'static self, ctx: Context) {
         let mut l = Loop::new(Duration::from_secs(1));
         loop {
-            println!("{}", self.sensor.get_distance().unwrap());
+            println!("{:#?}", self.sensor.get_distance().unwrap());
             select! {
                 _ = l.select() => {},
                 _ = ctx.done() => break,
