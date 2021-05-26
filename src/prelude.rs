@@ -13,5 +13,6 @@ pub use crate::machine::*;
 pub use crate::motor::*;
 pub use crate::peripherals::*;
 pub use crate::robot::*;
+pub use crate::rotation::*;
 pub use crate::rtos::*;
 pub use crate::smart_port::*;
