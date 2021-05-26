@@ -25,6 +25,7 @@ pub mod motor;
 pub mod peripherals;
 pub mod prelude;
 pub mod robot;
+pub mod rotation;
 pub mod rtos;
 pub mod serial;
 pub mod smart_port;
