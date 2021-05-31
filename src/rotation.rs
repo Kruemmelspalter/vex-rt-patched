@@ -70,7 +70,7 @@ impl RotationSensor {
 
     /// Get the Rotation Sensor’s current angle in centidegrees (0-36000)
     pub fn get_angle(&self) -> Result<i32, RotationSensorError> {
-        match unsafe { bindings::rotation_get_velocity(self.port) } {
+        match unsafe { bindings::rotation_get_angle(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
             x => Ok(x),
         }
