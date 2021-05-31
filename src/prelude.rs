@@ -4,6 +4,7 @@ pub use crate::entry;
 pub use crate::select;
 
 pub use crate::adi::*;
+pub use crate::battery::*;
 pub use crate::controller::*;
 pub use crate::distance::*;
 pub use crate::error::*;
