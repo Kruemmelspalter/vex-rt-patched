@@ -5,6 +5,7 @@ authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
     "Jai Agrawal <jaiagr@pm.me>",
+    "Eric Dong <aderic6@gmail.com",
 ]
 edition = "2018"
 build = "build/main.rs"

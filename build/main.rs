@@ -20,6 +20,10 @@ const BITFIELD_ENUMS: &[&str] = &["ext_adi_port_config_e"];
 
 // Functions to be included by bindgen
 const WHITELISTED_FUNCS: &[&str] = &[
+    "battery_get_capacity",
+    "battery_get_current",
+    "battery_get_temperature",
+    "battery_get_voltage",
     "controller_get_analog",
     "controller_get_digital",
     "distance_get",

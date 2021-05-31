@@ -15,6 +15,7 @@ mod bindings;
 mod error;
 
 pub mod adi;
+pub mod battery;
 pub mod controller;
 pub mod distance;
 pub mod imu;
