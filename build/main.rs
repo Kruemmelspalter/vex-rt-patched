@@ -20,6 +20,10 @@ const BITFIELD_ENUMS: &[&str] = &["ext_adi_port_config_e"];
 
 // Functions to be included by bindgen
 const WHITELISTED_FUNCS: &[&str] = &[
+    "battery_get_capacity",
+    "battery_get_current",
+    "battery_get_temperature",
+    "battery_get_voltage",
     "controller_get_analog",
     "controller_get_digital",
     "distance_get",
@@ -115,6 +119,15 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "queue_peek",
     "queue_prepend",
     "queue_recv",
+    "rotation_get_angle",
+    "rotation_get_position",
+    "rotation_get_reversed",
+    "rotation_get_velocity",
+    "rotation_reset",
+    "rotation_reset_position",
+    "rotation_reverse",
+    "rotation_set_position",
+    "rotation_set_reversed",
     "sem_create",
     "sem_delete",
     "sem_get_count",

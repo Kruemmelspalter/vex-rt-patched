@@ -13,6 +13,7 @@ mod bindings;
 mod error;
 
 pub mod adi;
+pub mod battery;
 pub mod controller;
 pub mod distance;
 pub mod imu;
@@ -23,6 +24,7 @@ pub mod motor;
 pub mod peripherals;
 pub mod prelude;
 pub mod robot;
+pub mod rotation;
 pub mod rtos;
 pub mod serial;
 pub mod smart_port;
