@@ -2,11 +2,13 @@
 
 use crate::adi::AdiExpander;
 use crate::imu::InertialSensor;
+use crate::prelude::{RotationSensor, RotationSensorError};
 use crate::{
     distance::DistanceSensor,
     motor::{Gearset, Motor},
     serial::Serial,
 };
+use core::convert::{TryFrom, TryInto};
 
 /// A struct which represents an unconfigured smart port.
 #[derive(Debug)]
@@ -51,8 +53,26 @@ impl SmartPort {
     pub fn into_distance(self) -> DistanceSensor {
         unsafe { DistanceSensor::new(self.port) }
     }
+
+    /// Converts a `SmartPort` into a
     /// [`InertialSensor`](crate::imu::InertialSensor).
     pub fn into_imu(self) -> InertialSensor {
         unsafe { InertialSensor::new(self.port) }
+    }
+
+    /// Converts a `SmartPort` into a
+    /// [`RotationSensor`](crate::rotation::RotationSensor).
+    #[inline]
+    pub fn into_rotation(self, reversed: bool) -> Result<RotationSensor, RotationSensorError> {
+        (self, reversed).try_into()
+    }
+}
+
+impl TryFrom<(SmartPort, bool)> for RotationSensor {
+    type Error = RotationSensorError;
+
+    #[inline]
+    fn try_from(port_reversed: (SmartPort, bool)) -> Result<Self, Self::Error> {
+        unsafe { RotationSensor::new(port_reversed.0.port, port_reversed.1) }
     }
 }
