@@ -6,6 +6,7 @@ use crate::{
 };
 
 /// A struct which represents a V5 smart port configured as a rotation sensor.
+#[derive(Debug)]
 pub struct RotationSensor {
     port: u8,
 }

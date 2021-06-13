@@ -6,6 +6,7 @@ use crate::{
 };
 
 /// A struct which represents a V5 Battery
+#[derive(Debug)]
 pub struct Battery {}
 
 impl Battery {
