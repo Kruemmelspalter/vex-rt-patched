@@ -32,6 +32,8 @@ pub mod smart_port;
 #[doc(hidden)]
 pub use spin::once;
 
+pub use uom;
+
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
     crate::io::eprintln!("panic occurred!: {:#?}", panic_info);
