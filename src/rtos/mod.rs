@@ -22,7 +22,7 @@ const TIMEOUT_MAX: u32 = 0xffffffff;
 /// Represents a time on a monotonically increasing clock (i.e., time since
 /// program start).
 ///
-/// This type has a precision of 1 millisecond.
+/// This type has a precision of 1 microsecond.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Instant(u64);
 
