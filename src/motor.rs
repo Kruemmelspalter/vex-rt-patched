@@ -34,15 +34,15 @@ impl Motor {
     /// This function is unsafe because it allows the user to create multiple
     /// mutable references to the same motor. You likely want to implement
     /// [`Robot::new()`](crate::robot::Robot::new()) instead.
-    pub unsafe fn new(port: u8, gearset: Gearset, reverse: bool) -> Self {
+    pub unsafe fn new(port: u8, gearset: Gearset, reverse: bool) -> Result<Self, MotorError> {
         let mut motor = Self { port };
-        motor.set_reversed(reverse).unwrap();
-        motor.set_gearing(gearset).unwrap();
+        motor.set_reversed(reverse)?;
+        motor.set_gearing(gearset)?;
         bindings::motor_set_encoder_units(
             port,
             bindings::motor_encoder_units_e_E_MOTOR_ENCODER_ROTATIONS,
         );
-        motor
+        Ok(motor)
     }
 
     /// Sets the voltage for the motor from -127 to 127.
