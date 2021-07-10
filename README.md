@@ -5,6 +5,10 @@
 
 A Rust runtime for the Vex V5 built on top of [PROS](https://pros.cs.purdue.edu/).
 
+## Disclamer
+
+vex-rt is an open-source community project. vex-rt is neither endorsed by or affiliated with Innovation First, Inc. VEX and VEX Robotics are trademarks or service marks of Innovation First, Inc.
+
 ## Quickstart
 
 you will need:
