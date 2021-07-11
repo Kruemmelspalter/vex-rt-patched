@@ -12,29 +12,13 @@ use crate::{
 pub struct Serial(u8);
 
 impl Serial {
-    /// Constructs a new generic serial port. Panics on failure; see
-    /// [`Serial::try_new()`].
-    ///
-    /// # Safety
-    /// This function is unsafe because it allows the user to create multiple
-    /// mutable references to the same smart port interface. You likely want to
-    /// implement [`Robot::new()`](crate::robot::Robot::new()) instead.
-    pub unsafe fn new(port: u8, baudrate: i32) -> Self {
-        Self::try_new(port, baudrate).unwrap_or_else(|err| {
-            panic!(
-                "failed to create generic serial port {} with baudrate {}: {}",
-                port, baudrate, err
-            )
-        })
-    }
-
     /// Constructs a new generic serial port.
     ///
     /// # Safety
     /// This function is unsafe because it allows the user to create multiple
     /// mutable references to the same smart port interface. You likely want to
     /// implement [`Robot::new()`](crate::robot::Robot::new()) instead.
-    pub unsafe fn try_new(port: u8, baudrate: i32) -> Result<Self, Error> {
+    pub unsafe fn new(port: u8, baudrate: i32) -> Result<Self, Error> {
         bindings::serial_enable(port).check()?;
         bindings::serial_set_baudrate(port, baudrate).check()?;
         Ok(Self(port))
