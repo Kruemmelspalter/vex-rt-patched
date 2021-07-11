@@ -29,8 +29,8 @@ impl Robot for SerialBot {
     fn new(peripherals: Peripherals) -> Self {
         Self {
             interface: Mutex::new(Interface {
-                out_port: peripherals.port01.into_serial(BAUDRATES[0]),
-                in_port: peripherals.port02.into_serial(BAUDRATES[0]),
+                out_port: peripherals.port01.into_serial(BAUDRATES[0]).unwrap(),
+                in_port: peripherals.port02.into_serial(BAUDRATES[0]).unwrap(),
             }),
         }
     }

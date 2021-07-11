@@ -151,14 +151,8 @@ impl TryFrom<(AdiPort, f64)> for AdiGyro {
     type Error = AdiGyroError;
 
     #[inline]
-    fn try_from(port_multiplier: (AdiPort, f64)) -> Result<Self, Self::Error> {
-        unsafe {
-            AdiGyro::new(
-                port_multiplier.0.port,
-                port_multiplier.1,
-                port_multiplier.0.expander_port,
-            )
-        }
+    fn try_from((port, multiplier): (AdiPort, f64)) -> Result<Self, Self::Error> {
+        unsafe { AdiGyro::new(port.port, multiplier, port.expander_port) }
     }
 }
 

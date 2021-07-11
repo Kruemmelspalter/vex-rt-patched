@@ -11,16 +11,12 @@ struct DriveTrain {
 impl DriveTrain {
     fn new(left_drive_port: SmartPort, right_drive_port: SmartPort) -> Self {
         Self {
-            left_drive: left_drive_port.into_motor(
-                Gearset::EighteenToOne,
-                EncoderUnits::Degrees,
-                true,
-            ),
-            right_drive: right_drive_port.into_motor(
-                Gearset::EighteenToOne,
-                EncoderUnits::Degrees,
-                false,
-            ),
+            left_drive: left_drive_port
+                .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true)
+                .unwrap(),
+            right_drive: right_drive_port
+                .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false)
+                .unwrap(),
         }
     }
 
