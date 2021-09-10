@@ -109,6 +109,7 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "mutex_recursive_create",
     "mutex_recursive_give",
     "mutex_recursive_take",
+    "registry_get_plugged_type",
     "rotation_get_angle",
     "rotation_get_position",
     "rotation_get_reversed",
