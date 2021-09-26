@@ -9,7 +9,7 @@ use crate::{
 
 /// Represents a Vex controller.
 pub struct Controller {
-    /// The id of the controller
+    /// The id of the controller.
     id: bindings::controller_id_e_t,
     /// The left analog stick.
     pub left_stick: AnalogStick,
