@@ -26,6 +26,7 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "battery_get_voltage",
     "controller_get_analog",
     "controller_get_battery_capacity",
+    "controller_get_battery_level",
     "controller_get_digital",
     "distance_get",
     "distance_get_confidence",

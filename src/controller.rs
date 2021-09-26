@@ -115,13 +115,16 @@ impl Controller {
     /// Gets the battery capactiy of the given controller in percent.
     pub fn get_battery_capacity(&self) -> Result<i32, ControllerError> {
         match unsafe { bindings::controller_get_battery_capacity(self.id) } {
-            bindings::PROS_ERR_ -> Err(ControllerError::from_errno()),
-            x -> Ok(x),
+            bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
+            x => Ok(x),
         }
     }
-
+    /// Gets the battery level of the given controller in percent.
     pub fn get_battery_level(&self) -> Result<i32, ControllerError> {
-        todo!()
+        match unsafe { bindings::controller_get_battery_level(self.id) } {
+            bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
+            x => Ok(x),
+        }
     }
 }
 
