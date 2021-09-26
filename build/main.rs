@@ -46,6 +46,8 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "ext_adi_ultrasonic_get",
     "ext_adi_ultrasonic_init",
     "ext_adi_ultrasonic_shutdown",
+    "controller_get_battery_capacity",
+    "controller_get_battery_level",
     "imu_reset",
     "imu_get_rotation",
     "imu_get_heading",

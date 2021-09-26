@@ -40,6 +40,17 @@ impl Robot for ClawBot {
         }
     }
 
+    fn initialize(&self, _ctx: Context) {
+        println!(
+            "The controller's battery capcity is: {}",
+            self.controller.get_battery_capacity().unwrap()
+        );
+        println!(
+            "The controller's battery level is: {}",
+            self.controller.get_battery_level().unwrap()
+        );
+    }
+
     fn opcontrol(&self, ctx: Context) {
         let mut l = Loop::new(Duration::from_millis(10));
         let mut drive_train = self.drive_train.lock();
@@ -58,6 +69,12 @@ impl Robot for ClawBot {
     fn disabled(&self, _ctx: Context) {
         self.drive_train.lock().spin(0);
     }
+
+    // fn battery_status(&self, _ctx: Context) {
+    //     println!("The controller's battery capcity is: {}",
+    // self.controller.get_battery_capacity().unwrap())     println!("The
+    // controller's battery level is: {}",
+    // self.controller.get_battery_level().unwrap()) }
 }
 
 entry!(ClawBot);
