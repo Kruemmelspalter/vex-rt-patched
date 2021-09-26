@@ -41,8 +41,8 @@ impl Robot for ClawBot {
     }
 
     fn initialize(&self, _ctx: Context) {
-        println!("{}", self.controller.get_battery_capacity().unwrap()),
-        println!("{}", self.controller.get_battery_level().unwrap()),
+        println!("{}", self.controller.get_battery_capacity().unwrap());
+        println!("{}", self.controller.get_battery_level().unwrap());
     }
 
     fn opcontrol(&self, ctx: Context) {
