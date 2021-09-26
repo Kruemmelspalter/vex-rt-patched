@@ -58,6 +58,10 @@ impl Robot for ClawBot {
     fn disabled(&self, _ctx: Context) {
         self.drive_train.lock().spin(0);
     }
+
+    fn initialize(&self, _ctx: Context) {
+        println!("Battery Level {}", self.controller.get_battery_level().unwrap());
+    }
 }
 
 entry!(ClawBot);
