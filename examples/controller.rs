@@ -49,6 +49,7 @@ impl Robot for ClawBot {
                 _ = ctx.done() => break,
                 _ = l.select() => {
                     let velocity = self.controller.left_stick.get_x().unwrap();
+                    println!("{}", self.controller.get_battery_capacity().unwrap());
                     drive_train.spin(velocity);
                 },
             }

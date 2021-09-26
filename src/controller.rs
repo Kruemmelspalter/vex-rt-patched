@@ -9,6 +9,7 @@ use crate::{
 
 /// Represents a Vex controller.
 pub struct Controller {
+    id: bindings::controller_id_e_t,
     /// The left analog stick.
     pub left_stick: AnalogStick,
     /// The right analog stick.
@@ -50,6 +51,7 @@ impl Controller {
     pub unsafe fn new(id: ControllerId) -> Self {
         let id: bindings::controller_id_e_t = id.into();
         Controller {
+            id,
             left_stick: AnalogStick {
                 id,
                 x_channel: bindings::controller_analog_e_t_E_CONTROLLER_ANALOG_LEFT_X,
@@ -109,6 +111,19 @@ impl Controller {
                 button: bindings::controller_digital_e_t_E_CONTROLLER_DIGITAL_A,
             },
         }
+    }
+
+    /// Gets the battery capacity of the given controller in percent.
+    pub fn get_battery_capacity(&self) -> Result<i32, ControllerError> {
+        match unsafe { bindings::controller_get_battery_capacity(self.id) } {
+            bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
+            x => Ok(x),
+        }
+    }
+
+    /// Gets the battery level of the given controller in percent.
+    pub fn get_battery_level(&self) -> Result<i32, ControllerError> {
+        todo!()
     }
 }
 
