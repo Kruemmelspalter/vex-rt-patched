@@ -1,7 +1,8 @@
 //! ADIPort.
 
 use super::{
-    AdiAnalog, AdiAnalogError, AdiEncoder, AdiEncoderError, AdiGyro, AdiGyroError, AdiUltrasonic,
+    AdiAnalog, AdiAnalogError, AdiDigitalError, AdiDigitalInput, AdiDigitalOutput, AdiEncoder,
+    AdiEncoderError, AdiGyro, AdiGyroError, AdiMotor, AdiMotorError, AdiUltrasonic,
     AdiUltrasonicError,
 };
 
@@ -71,6 +72,33 @@ impl TryFrom<AdiPort> for AdiAnalog {
     /// Converts a `AdiPort` into a [`AdiAnalog`].
     fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
         unsafe { AdiAnalog::new(port.port, port.expander_port) }
+    }
+}
+
+impl TryFrom<AdiPort> for AdiDigitalInput {
+    type Error = AdiDigitalError;
+
+    /// Converts a `AdiPort` into a [`AdiDigitalInput`].
+    fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
+        unsafe { AdiDigitalInput::new(port.port, port.expander_port) }
+    }
+}
+
+impl TryFrom<AdiPort> for AdiDigitalOutput {
+    type Error = AdiDigitalError;
+
+    /// Converts a `AdiPort` into a [`AdiDigitalInput`].
+    fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
+        unsafe { AdiDigitalOutput::new(port.port, port.expander_port) }
+    }
+}
+
+impl TryFrom<AdiPort> for AdiMotor {
+    type Error = AdiMotorError;
+
+    /// Converts a `AdiPort` into a [`AdiDigitalInput`].
+    fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
+        unsafe { AdiMotor::new(port.port, port.expander_port) }
     }
 }
 
