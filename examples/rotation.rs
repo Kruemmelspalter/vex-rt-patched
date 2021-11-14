@@ -18,30 +18,24 @@ impl DriveTrain {
 }
 
 struct ClawBot {
-    drive_train: Mutex<DriveTrain>,
+    drive_train: VexAsyncMutex<DriveTrain>,
 }
 
+#[async_trait(?Send)]
 impl Robot for ClawBot {
-    fn new(peripherals: Peripherals) -> Self {
+    async fn new(peripherals: Peripherals) -> Self {
         Self {
-            drive_train: Mutex::new(DriveTrain::new(peripherals.port08)),
+            drive_train: VexAsyncMutex::new(DriveTrain::new(peripherals.port08)),
         }
     }
 
-    fn autonomous(&'static self, ctx: Context) {
+    async fn autonomous(&'static self, robot_args: RobotArgs) {
         println!("autonomous");
-        let mut l = Loop::new(Duration::from_millis(20));
+        let drive_train = self.drive_train.lock_async().await;
 
-        let drive_train = self.drive_train.lock();
-
-        loop {
+        async_loop!(robot_args: (Duration::from_millis(20)) {
             println!("{:?}", drive_train.rotation_sensor.get_position().unwrap());
-
-            select! {
-                _ = ctx.done() => break,
-                _ = l.select() => {},
-            }
-        }
+        });
     }
 }
 

@@ -18,37 +18,31 @@ impl DriveTrain {
 
 struct ClawBot {
     controller: Controller,
-    drive_train: Mutex<DriveTrain>,
+    drive_train: VexAsyncMutex<DriveTrain>,
 }
 
+#[async_trait(?Send)]
 impl Robot for ClawBot {
-    fn new(p: Peripherals) -> Self {
+    async fn new(p: Peripherals) -> Self {
         ClawBot {
             controller: p.master_controller,
-            drive_train: Mutex::new(DriveTrain {
+            drive_train: VexAsyncMutex::new(DriveTrain {
                 left_motor: p.port01.into_motor(Gearset::EighteenToOne, false).unwrap(),
                 right_motor: p.port02.into_motor(Gearset::EighteenToOne, true).unwrap(),
             }),
         }
     }
 
-    fn opcontrol(&self, ctx: Context) {
-        let mut l = Loop::new(Duration::from_millis(10));
-        let mut drive_train = self.drive_train.lock();
-
-        loop {
-            select! {
-                _ = ctx.done() => break,
-                _ = l.select() => {
-                    let velocity = self.controller.left_stick.get_x().unwrap();
-                    drive_train.spin(velocity);
-                },
-            }
-        }
+    async fn opcontrol(&'static self, robot_args: RobotArgs) {
+        async_loop!(robot_args: (Duration::from_secs(1)){
+            let mut drive_train = self.drive_train.lock_async().await;
+            let velocity = self.controller.left_stick.get_x().unwrap();
+            drive_train.spin(velocity);
+        });
     }
 
-    fn disabled(&self, _ctx: Context) {
-        self.drive_train.lock().spin(0);
+    async fn disabled(&'static self, _robot_args: RobotArgs) {
+        self.drive_train.lock_async().await.spin(0);
     }
 }
 

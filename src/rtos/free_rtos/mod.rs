@@ -1,18 +1,23 @@
 //! FreeRTOS concurrency primitives
 
-mod mutex;
-mod queue;
+use core::time::Duration;
 
-pub use mutex::*;
-pub use queue::*;
-
-use crate::error::Error as VexRtError;
-use crate::rtos::{time_since_start, Instant, Task};
 use concurrency_traits::mutex::{ParkMutex, SpinLock};
 use concurrency_traits::queue::ParkQueue;
 use concurrency_traits::*;
-use core::time::Duration;
 use single_executor::AsyncExecutor;
+
+pub use mutex::*;
+pub use queue::*;
+pub use semaphore::*;
+
+use crate::error::Error as VexRtError;
+use crate::rtos::instant::{time_since_start, Instant};
+use crate::rtos::task::Task;
+
+mod mutex;
+mod queue;
+mod semaphore;
 
 /// A FreeRTOS based [`ParkMutex`].
 pub type ParkMutexFreeRtos<T> = ParkMutex<T, FreeRtosConcurrency>;

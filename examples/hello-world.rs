@@ -5,8 +5,9 @@ use vex_rt::prelude::*;
 
 struct HelloBot;
 
+#[async_trait(?Send)]
 impl Robot for HelloBot {
-    fn new(_peripherals: Peripherals) -> Self {
+    async fn new(_peripherals: Peripherals) -> Self {
         println!("Hello, world");
         HelloBot
     }

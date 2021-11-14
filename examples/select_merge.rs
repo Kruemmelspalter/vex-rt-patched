@@ -1,31 +1,26 @@
+// TODO
+
 #![no_std]
 #![no_main]
 
 use core::time::Duration;
-use vex_rt::{prelude::*, select_merge};
+use vex_rt::prelude::*;
 
 struct SelectRobot;
 
+#[async_trait(?Send)]
 impl Robot for SelectRobot {
-    fn new(_peripherals: Peripherals) -> Self {
+    async fn new(_peripherals: Peripherals) -> Self {
         Self
     }
-    fn autonomous(&'static self, ctx: Context) {
+
+    async fn autonomous(&'static self, robot_args: RobotArgs) {
         println!("autonomous");
         let mut x = 0;
-        let mut l = Loop::new(Duration::from_secs(1));
-        loop {
+        async_loop!(robot_args: (Duration::from_secs(1)){
             println!("{}", x);
             x += 1;
-            let event = select_merge! {
-                _ = l.select() => false,
-                _ = ctx.done() => true,
-            };
-            if select! { b = event => b } {
-                break;
-            }
-        }
-        println!("auto done")
+        });
     }
 }
 
