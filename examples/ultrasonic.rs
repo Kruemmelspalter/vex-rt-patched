@@ -8,15 +8,16 @@ struct UltrasonicBot {
     sensor: AdiUltrasonic,
 }
 
+#[async_trait(?Send)]
 impl Robot for UltrasonicBot {
-    fn new(peripherals: Peripherals) -> Self {
+    async fn new(peripherals: Peripherals) -> Self {
         Self {
             sensor: (peripherals.port_a, peripherals.port_b).try_into().unwrap(),
         }
     }
-    fn opcontrol(&'static self, ctx: Context) {
-        let mut l = Loop::new(Duration::from_secs(1));
-        loop {
+
+    async fn opcontrol(&'static self, robot_args: RobotArgs) {
+        async_loop!(robot_args: (Duration::from_secs(1)){
             match self.sensor.get() {
                 Ok(r) => {
                     println!("{}", r);
@@ -28,11 +29,7 @@ impl Robot for UltrasonicBot {
                     e.unwrap();
                 }
             }
-            select! {
-                _ = l.select() => {},
-                _ = ctx.done() => break,
-            }
-        }
+        });
     }
 }
 

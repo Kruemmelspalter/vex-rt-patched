@@ -1,5 +1,4 @@
 #![doc(hidden)]
 
+mod async_loop;
 mod entry;
-mod select;
-mod state_machine;

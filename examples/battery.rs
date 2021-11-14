@@ -3,14 +3,15 @@
 
 use vex_rt::prelude::*;
 
-struct BatteryBot {}
+struct BatteryBot;
 
+#[async_trait(?Send)]
 impl Robot for BatteryBot {
-    fn new(_peripherals: Peripherals) -> Self {
-        Self {}
+    async fn new(_peripherals: Peripherals) -> Self {
+        Self
     }
 
-    fn opcontrol(&'static self, _ctx: Context) {
+    async fn opcontrol(&'static self, _robot_args: RobotArgs) {
         println!("Battery Capacity: {:?}", Battery::get_current().unwrap());
         println!("Battery Current: {:?}", Battery::get_capacity().unwrap());
         println!(

@@ -4,6 +4,7 @@ version = "0.9.0"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
+    "Brett Etter <buzzec@buzzec.net>",
     "Jai Agrawal <jaiagr@pm.me>",
     "Eric Dong <aderic6@gmail.com>",
 ]
@@ -12,26 +13,53 @@ build = "build/main.rs"
 description = "A Rust runtime for the Vex V5 built on top of PROS."
 license = "MIT"
 repository = "https://gitlab.com/qvex/vex-rt"
+resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[patch.crates-io.concurrency_traits]
+git = "https://github.com/Buzzec/concurrency_traits.git"
+branch = "dev"
+
+[patch.crates-io.single_executor]
+git = "https://github.com/Buzzec/single_executor.git"
+branch = "dev"
+
+[patch.crates-io.simple_futures]
+git = "https://github.com/Buzzec/simple_futures.git"
+branch = "dev"
 
 [dependencies]
 libc = { version = "0.2", default-features = false }
 libc-print = "0.1.14"
 rcstring = "0.2.1"
-spin = "0.9.0"
 newlib-alloc = "0.1.0"
 cstring-interop = "0.1.0"
-by_address = "1.0.4"
-owner-monad = "0.1.0"
-raii-map = "0.1.0"
-queue-model = "0.1.2"
 bitflags = "1.2.1"
 atomic_swapping = "0.1.0"
-concurrency_traits = { version = "0.5.2", default-features = false, features = ["alloc", "nightly"] }
-single_executor = { version = "0.1.0", default-features = false, features = ["nightly"] }
 uom = { version = "0.31.1", default-features = false, features = ["f64", "i32", "si", "try-from"] }
 num-traits = { version = "0.2.14", default-features = false }
+async-trait = "0.1.50"
+log = { version = "0.4.14", features = [] }
+rgb = "0.8.27"
+ansi_rgb = "0.2.0"
+crossbeam = { version = "0.8.1", default-features = false, features = ["alloc"] }
+futures = { version = "0.3.15", default-features = false, features = ["alloc"] }
+
+[dependencies.concurrency_traits]
+version = "0.7.2"
+default-features = false
+features = ["alloc", "nightly", "impl_crossbeam"]
+
+[dependencies.single_executor]
+version = "0.4.1"
+default-features = false
+features = ["nightly"]
+
+[dependencies.simple_futures]
+version = "0.1.2"
+default-features = false
+features = ["alloc"]
 
 [build-dependencies]
 bindgen = "0.58.0"
@@ -41,3 +69,7 @@ zip-extensions = "0.6.0"
 [dev-dependencies]
 array-init = "2.0.0"
 itertools = { version = "0.10.0", default-features = false, features = ["use_alloc"] }
+
+[features]
+default = ["logging"]
+logging = []

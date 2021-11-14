@@ -14,10 +14,13 @@ mod error;
 
 pub mod adi;
 pub mod battery;
+pub mod competition;
 pub mod controller;
 pub mod distance;
+pub mod entry_function;
 pub mod imu;
 pub mod io;
+pub mod logger;
 pub mod machine;
 pub mod macros;
 pub mod motor;
@@ -28,9 +31,6 @@ pub mod rotation;
 pub mod rtos;
 pub mod serial;
 pub mod smart_port;
-
-#[doc(hidden)]
-pub use spin::once;
 
 pub use uom;
 

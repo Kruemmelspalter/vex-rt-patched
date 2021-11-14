@@ -1,3 +1,5 @@
+// TODO
+
 #![no_std]
 #![no_main]
 #![feature(array_map)]
@@ -23,24 +25,26 @@ struct Interface {
 }
 
 struct SerialBot {
-    interface: Mutex<Interface>,
+    interface: VexAsyncMutex<Interface>,
 }
 
+#[async_trait(?Send)]
 impl Robot for SerialBot {
-    fn new(peripherals: Peripherals) -> Self {
+    async fn new(peripherals: Peripherals) -> Self {
         Self {
-            interface: Mutex::new(Interface {
+            interface: VexAsyncMutex::new(Interface {
                 out_port: peripherals.port01.into_serial(BAUDRATES[0]).unwrap(),
                 in_port: peripherals.port02.into_serial(BAUDRATES[0]).unwrap(),
             }),
         }
     }
-    fn opcontrol(&'static self, _ctx: Context) {
+
+    async fn opcontrol(&'static self, _robot_args: RobotArgs) {
         // Initialize block to send. Bytes are 00 through FF.
         let block: [u8; 256] = array_init(|i| i as u8);
 
         // Obtain the serial interface.
-        let mut interface = self.interface.lock();
+        let mut interface = self.interface.lock_async().await;
 
         // Map baudrates to pair of averages.
         let averages = BAUDRATES.map(|rate| {

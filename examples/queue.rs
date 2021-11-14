@@ -1,37 +1,49 @@
+// TODO
+
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
 use core::time::Duration;
 
-use queue_model::StaticPriorityQueue;
+use alloc::sync::Arc;
 use vex_rt::prelude::*;
 
 struct QueueBot {
-    chan: ReceiveQueue<i32>,
+    queue: Arc<VexAsyncQueue<i32>>,
 }
 
+#[async_trait(?Send)]
 impl Robot for QueueBot {
-    fn new(_peripherals: Peripherals) -> Self {
-        let (send, receive) = queue(StaticPriorityQueue::<i32, 20>::new());
-        for x in 0.. {
-            if !send.send(x) {
-                break;
-            }
+    async fn new(_peripherals: Peripherals) -> Self {
+        Self {
+            queue: Default::default(),
         }
-        Task::spawn(move || {
-            Task::delay(Duration::from_secs(1));
-            send.send(3);
-        })
-        .unwrap();
-        Self { chan: receive }
     }
-    fn opcontrol(&'static self, ctx: Context) {
+
+    async fn initialize(&'static mut self, robot_args: InitializeRobotArgs) -> &'static Self {
+        let queue = self.queue.clone();
+        let sleep_runner = robot_args.sleep_runner;
+        robot_args
+            .local_handle
+            .submit(
+                async move {
+                    sleep_runner.sleep_for(Duration::from_secs(1)).await;
+                    queue.push_async(3).await;
+                },
+                "queue-bot::sleep-task",
+            )
+            .unwrap_or_else(|_| panic!("Could not submit task!"));
+        self
+    }
+
+    async fn opcontrol(&'static self, _robot_args: RobotArgs) {
         println!("opcontrol");
+        // We don't need to use `async_loop!` here because we await on the pop
+        // operation.
         loop {
-            select! {
-                x = self.chan.select() => println!("{}", x),
-                _ = ctx.done() => break,
-            }
+            println!("{}", self.queue.pop_async().await);
         }
     }
 }
