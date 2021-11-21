@@ -45,7 +45,7 @@ impl Log for TerminalLogger {
             unsafe {
                 libc::fflush(libc::fdopen(
                     libc::STDOUT_FILENO,
-                    &[b'w', b'\0'] as *const u8,
+                    &[b'w', b'\0'] as *const libc::c_char,
                 ))
             },
             0

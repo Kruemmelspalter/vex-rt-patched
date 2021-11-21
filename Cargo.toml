@@ -15,6 +15,11 @@ license = "MIT"
 repository = "https://gitlab.com/qvex/vex-rt"
 resolver = "2"
 
+[workspace]
+members = [
+    "xtask",
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [patch.crates-io.concurrency_traits]

@@ -1,0 +1,5 @@
+[alias]
+xtask = "run --package xtask --"
+
+[target.armv7a-vex-eabi]
+runner = "prosv5"
