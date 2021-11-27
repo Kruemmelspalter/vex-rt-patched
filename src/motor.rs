@@ -395,6 +395,7 @@ impl From<MotorError> for Error {
 }
 
 /// Represents possible brake modes for a motor.
+#[derive(Clone, Copy)]
 pub enum BrakeMode {
     /// Motor coasts when stopped.
     Coast,
@@ -415,6 +416,7 @@ impl From<BrakeMode> for bindings::motor_brake_mode_e {
 }
 
 /// Represents possible gear cartridges for a motor.
+#[derive(Clone, Copy)]
 pub enum Gearset {
     /// Blue 6:1 Gearset (600RPM).
     SixToOne,
@@ -435,6 +437,7 @@ impl From<Gearset> for bindings::motor_gearset_e {
 }
 
 /// Represents two possible directions of movement for a robot.
+#[derive(Clone, Copy)]
 pub enum Direction {
     /// The positive direction.
     Positive,
@@ -443,6 +446,7 @@ pub enum Direction {
 }
 
 /// Represents the possible encoder units.
+#[derive(Clone, Copy)]
 pub enum EncoderUnits {
     /// The number of ticks of the internal motor encoder.
     /// - 300 ticks/rev with [`Gearset::SixToOne`].
