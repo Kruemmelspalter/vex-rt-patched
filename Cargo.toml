@@ -1,13 +1,13 @@
 [package]
 name = "vex-rt"
-version = "0.11.0"
+version = "0.11.1"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
     "Jai Agrawal <jaiagr@pm.me>",
     "Eric Dong <aderic6@gmail.com>",
 ]
-edition = "2018"
+edition = "2021"
 build = "build/main.rs"
 description = "A Rust runtime for the Vex V5 built on top of PROS."
 license = "MIT"
@@ -28,8 +28,8 @@ raii-map = "0.1.0"
 queue-model = "0.1.2"
 
 [build-dependencies]
-bindgen = "0.58.0"
-zip = "0.5.9"
+bindgen = "0.59.2"
+zip = "0.6.2"
 zip-extensions = "0.6.0"
 
 [dev-dependencies]

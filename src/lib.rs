@@ -3,7 +3,6 @@
 #![no_std]
 #![feature(alloc_error_handler)]
 #![feature(negative_impls)]
-#![feature(unsafe_cell_raw_get)]
 #![warn(missing_docs)]
 
 extern crate alloc;
