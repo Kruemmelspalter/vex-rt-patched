@@ -7,7 +7,7 @@ use std::{
 use zip_extensions::zip_extract;
 
 // Path to PROS release zip (relative to project root)
-const PROS_ZIP_STR: &str = "build/kernel@3.6.2.zip";
+const PROS_ZIP_STR: &str = "build/kernel@3.7.2.zip";
 
 // Path to PROS wrapper.h (relative to project root)
 const PROS_WRAPPER_STR: &str = "build/wrapper.h";
@@ -181,55 +181,50 @@ fn main() -> Result<(), io::Error> {
         pros_extract_path.join("firmware").display()
     );
 
-    let includes = get_includes(&pros_extract_path);
-    generate_bindings(&includes, &wrapper_h_path, &bindings_gen_path)?;
+    let args = get_args(&pros_extract_path);
+    generate_bindings(&args, &wrapper_h_path, &bindings_gen_path)?;
 
     Ok(())
 }
 
-/// detects system include paths for `arm-none-eabi` and pros.
-fn get_includes(pros_extract_path: &Path) -> Vec<String> {
-    // https://stackoverflow.com/questions/17939930/finding-out-what-the-gcc-include-path-is
+/// Finds the GCC sysroot.
+fn get_sysroot() -> String {
     let output = process::Command::new("arm-none-eabi-gcc")
-        .args(&["-E", "-Wp,-v", "-xc", "/dev/null"])
+        .args(&["--print-sysroot"])
         .output()
         .expect("failed to execute arm-none-eabi-gcc. is the arm-none-eabi toolchain installed?");
 
-    #[rustfmt::skip]
-    // output we want is in stderr
-    //
-    // On my system it looks like this:
-    //
-    // #include <...> search starts here:
-    // /usr/local/Cellar/arm-none-eabi-gcc/10.1.0/lib/gcc/arm-none-eabi/gcc/arm-none-eabi/10.1.0/include
-    // /usr/local/Cellar/arm-none-eabi-gcc/10.1.0/lib/gcc/arm-none-eabi/gcc/arm-none-eabi/10.1.0/include-fixed
-    // /usr/local/Cellar/arm-none-eabi-gcc/10.1.0/lib/gcc/arm-none-eabi/gcc/arm-none-eabi/10.1.0/../../../../../../arm-none-eabi/include
-    // End of search list.
+    let sysroot = str::from_utf8(&output.stdout).unwrap_or("").trim();
 
-    let mut in_include_section = false;
-    let mut include_paths: Vec<String> = vec![format!(
-        "-I{}",
-        pros_extract_path.join("include").to_str().unwrap()
-    )];
-
-    let stderr = str::from_utf8(&output.stderr).unwrap();
-
-    for line in stderr.lines() {
-        if line == "#include <...> search starts here:" {
-            in_include_section = true;
-        } else if line == "End of search list." {
-            in_include_section = false;
-        } else if in_include_section {
-            include_paths.push(format!("-I{}", line.trim()));
+    if sysroot.is_empty() {
+        for dir in ["/usr/lib/arm-none-eabi", "/usr/arm-none-eabi"] {
+            if Path::new(dir).is_dir() {
+                return dir.to_string();
+            }
         }
-    }
 
-    include_paths
+        panic!("Could not determine GCC sysroot path!")
+    } else {
+        sysroot.to_string()
+    }
+}
+
+/// Generates required compiler args for `arm-none-eabi` and pros.
+fn get_args(pros_extract_path: &Path) -> Vec<String> {
+    let sysroot = get_sysroot();
+
+    vec![
+        format!("-I{}", pros_extract_path.join("include").to_str().unwrap()),
+        "-isystem".to_string(),
+        format!("{}/include", sysroot),
+        "-cxx-isystem".to_string(),
+        format!("{}/include/c++", sysroot),
+    ]
 }
 
 /// Generates bindings using bindgen.
 fn generate_bindings(
-    includes: &[String],
+    args: &[String],
     wrapper_h_path: &Path,
     bindings_gen_path: &Path,
 ) -> Result<(), io::Error> {
@@ -237,7 +232,7 @@ fn generate_bindings(
         .header(wrapper_h_path.to_str().unwrap())
         .clang_arg("-target")
         .clang_arg("arm-none-eabi")
-        .clang_args(includes)
+        .clang_args(args)
         .ctypes_prefix("libc")
         .use_core()
         .layout_tests(false);
