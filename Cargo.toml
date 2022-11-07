@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "0.11.1"
+version = "0.11.2"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
@@ -28,7 +28,7 @@ raii-map = "0.1.0"
 queue-model = "0.1.2"
 
 [build-dependencies]
-bindgen = "0.59.2"
+bindgen = "0.61.0"
 zip = "0.6.2"
 zip-extensions = "0.6.0"
 
