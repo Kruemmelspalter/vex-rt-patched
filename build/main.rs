@@ -1,3 +1,5 @@
+#![feature(exit_status_error)]
+
 use std::{
     env, io,
     path::{Path, PathBuf},
@@ -184,6 +186,11 @@ fn main() -> Result<(), io::Error> {
     let args = get_args(&pros_extract_path);
     generate_bindings(&args, &wrapper_h_path, &bindings_gen_path)?;
 
+    #[cfg(feature = "hot-cold")]
+    {
+        build_cold_package(&pros_extract_path);
+    }
+
     Ok(())
 }
 
@@ -259,4 +266,17 @@ fn generate_bindings(
         .write_to_file(&bindings_gen_path)?;
 
     Ok(())
+}
+
+#[cfg(feature = "hot-cold")]
+fn build_cold_package(pros_path: &Path) {
+    process::Command::new("make")
+        .arg("-C")
+        .arg(pros_path.to_str().unwrap())
+        .arg("bin/cold.package.bin")
+        .output()
+        .expect("Failed to run make command for PROS cold package")
+        .status
+        .exit_ok()
+        .expect("make command for PROS cold package failed");
 }
