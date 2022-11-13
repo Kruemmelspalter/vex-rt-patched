@@ -26,6 +26,7 @@ cargo run --example hello-world
 
 | Versions starting with... | ...use PROS kernel version... |
 | ------------------------- | ----------------------------- |
+| 0.11.2                    | 3.7.2                         |
 | 0.11.1                    | 3.6.2                         |
 | 0.11.0                    | 3.6.0                         |
 | 0.10.1                    | 3.5.2                         |
