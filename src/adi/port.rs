@@ -1,8 +1,8 @@
 //! ADIPort.
 
 use super::{
-    AdiAnalog, AdiAnalogError, AdiEncoder, AdiEncoderError, AdiGyro, AdiGyroError, AdiUltrasonic,
-    AdiUltrasonicError,
+    AdiAnalog, AdiAnalogError, AdiDigitalOutput, AdiDigitalOutputError, AdiEncoder,
+    AdiEncoderError, AdiGyro, AdiGyroError, AdiUltrasonic, AdiUltrasonicError,
 };
 
 use crate::bindings;
@@ -46,6 +46,12 @@ impl AdiPort {
         self.try_into()
     }
 
+    /// Turns this port into an ADI analog
+    #[inline]
+    pub fn into_adi_digital_output(self) -> Result<AdiDigitalOutput, AdiDigitalOutputError> {
+        self.try_into()
+    }
+
     /// Turns this and another port into an encoder
     #[inline]
     pub fn into_adi_encoder(self, bottom: Self) -> Result<AdiEncoder, AdiEncoderError> {
@@ -71,6 +77,15 @@ impl TryFrom<AdiPort> for AdiAnalog {
     /// Converts a `AdiPort` into a [`AdiAnalog`].
     fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
         unsafe { AdiAnalog::new(port.port, port.expander_port) }
+    }
+}
+
+impl TryFrom<AdiPort> for AdiDigitalOutput {
+    type Error = AdiDigitalOutputError;
+
+    /// Converts a `AdiPort` into a [`AdiDigitalOutput`].
+    fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
+        unsafe { AdiDigitalOutput::new(port.port, port.expander_port) }
     }
 }
 
