@@ -1,5 +1,6 @@
 //! A crate for running rust on the VEX V5.
 
+#![crate_type = "rlib"]
 #![no_std]
 #![feature(alloc_error_handler)]
 #![feature(negative_impls)]

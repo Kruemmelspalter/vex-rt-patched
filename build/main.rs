@@ -161,7 +161,6 @@ const WHITELISTED_VARS: &[&str] = &[
 
 fn main() -> Result<(), io::Error> {
     // tell cargo to rerun this script if it's dependent files change
-    println!("cargo:rerun-if-changed=build/main.rs");
     println!("cargo:rerun-if-changed={}", PROS_ZIP_STR);
     println!("cargo:rerun-if-changed={}", PROS_WRAPPER_STR);
 
@@ -183,11 +182,16 @@ fn main() -> Result<(), io::Error> {
         pros_extract_path.join("firmware").display()
     );
 
+    println!("cargo:rustc-link-arg=-nostartfiles");
+    println!("cargo:rustc-link-arg=-nostdlib");
+    println!("cargo:rustc-link-arg=-Wl,-Tv5.ld,-Tv5-common.ld,--gc-sections");
+    println!("cargo:rustc-link-arg=-Wl,--allow-multiple-definition");
+    println!("cargo:rustc-link-arg=-Wl,--start-group,-lpros,-lc,-lm,-lgcc,-lstdc++,--end-group");
+
     let args = get_args(&pros_extract_path);
     generate_bindings(&args, &wrapper_h_path, &bindings_gen_path)?;
 
-    #[cfg(feature = "hot-cold")]
-    {
+    if cfg!(feature = "hot-cold") {
         build_cold_package(&pros_extract_path);
     }
 
@@ -268,7 +272,6 @@ fn generate_bindings(
     Ok(())
 }
 
-#[cfg(feature = "hot-cold")]
 fn build_cold_package(pros_path: &Path) {
     process::Command::new("make")
         .arg("-C")

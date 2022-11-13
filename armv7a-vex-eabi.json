@@ -8,15 +8,6 @@
   "features": "+v7,+thumb2,+soft-float,-neon,+strict-align",
   "linker": "arm-none-eabi-gcc",
   "linker-flavor": "gcc",
-  "post-link-args": {
-    "gcc": [
-        "-nostartfiles",
-        "-nostdlib",
-        "-Wl,-Tv5.ld,-Tv5-common.ld,--gc-sections",
-        "-Wl,--allow-multiple-definition",
-        "-Wl,--start-group,-lpros,-lc,-lm,-lgcc,-lstdc++,--end-group"
-    ]
-  },
   "llvm-target": "armv7a-none-eabi",
   "max-atomic-width": 64,
   "os": "none",
