@@ -43,9 +43,9 @@ impl AdiDigitalOutput {
 /// Represents possible errors for ADI digital output operations.
 #[derive(Debug)]
 pub enum AdiDigitalOutputError {
-    /// Ports are out of range (1-8).
+    /// Port is out of range (1-8).
     PortsOutOfRange,
-    /// Ports cannot be configured as an ADI Digital output.
+    /// Port cannot be configured as an ADI digital output.
     PortsNotDigitalOutput,
     /// Unknown error.
     Unknown(i32),
@@ -64,9 +64,9 @@ impl AdiDigitalOutputError {
 impl From<AdiDigitalOutputError> for Error {
     fn from(err: AdiDigitalOutputError) -> Self {
         match err {
-            AdiDigitalOutputError::PortsOutOfRange => Error::Custom("ports out of range".into()),
+            AdiDigitalOutputError::PortsOutOfRange => Error::Custom("port is out of range".into()),
             AdiDigitalOutputError::PortsNotDigitalOutput => {
-                Error::Custom("ports not an adi digital output".into())
+                Error::Custom("port is not an adi digital output".into())
             }
             AdiDigitalOutputError::Unknown(n) => Error::System(n),
         }

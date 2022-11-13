@@ -36,6 +36,7 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "ext_adi_analog_read",
     "ext_adi_analog_read_calibrated",
     "ext_adi_analog_read_calibrated_HR",
+    "ext_adi_digital_read",
     "ext_adi_digital_write",
     "ext_adi_encoder_get",
     "ext_adi_encoder_init",
