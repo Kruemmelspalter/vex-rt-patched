@@ -431,7 +431,8 @@ impl GenericSleep {
     }
 }
 
-/// Represents a future event which can be used with the [`select!`] macro.
+/// Represents a future event which can be used with the
+/// [`select!`](crate::select!) macro.
 pub trait Selectable<T = ()>: Sized {
     /// Processes the event if it is ready, consuming the event object;
     /// otherwise, it provides a replacement event object.

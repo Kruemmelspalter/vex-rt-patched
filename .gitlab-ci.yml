@@ -13,28 +13,16 @@ before_script:
 build:
   stage: build
   variables:
-    RUSTFLAGS: -Dwarnings
+    RUSTFLAGS: -D warnings
+    RUSTDOCFLAGS: -D warnings
   script:
+    - cargo fmt -- --check
     - cargo build
     - cargo build --examples
+    - cargo clippy -- -D warnings
+    - cargo clippy --examples -- -D warnings
+    - cargo doc
   cache:
     paths:
       - .cargo
       - target
-
-clippy:
-  stage: build
-  script:
-    - cargo clippy -- -D warnings
-    - cargo clippy --examples -- -D warnings
-  cache:
-    paths:
-      - .cargo
-
-format:
-  stage: build
-  script: cargo fmt -- --check
-
-doc:
-  stage: build
-  script: cargo doc

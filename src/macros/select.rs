@@ -88,15 +88,15 @@ macro_rules! select_sleep {
 
 #[macro_export]
 /// Generates a future event (i.e. one which implements
-/// [`crate::rtos::Selectable`]) from a similar recipe as the [`select`]
-/// macro, combining the behaviour of [`crate::rtos::select_map`] and
-/// [`select_any`].
+/// [`crate::rtos::Selectable`]) from a similar recipe as the [`select!`]
+/// macro, combining the behaviour of [`select_map`](crate::rtos::select_map)
+/// and [`select_any!`](crate::select_any!).
 ///
-/// There is one important difference to note between this macro and [`select`]:
-/// since this macro needs to generate an object containing the event processing
-/// recipe, the body expressions are placed inside lambdas, and therefore
-/// contextual expressions such as `break`, `continue` and `return` are not
-/// valid.
+/// There is one important difference to note between this macro and
+/// [`select!`]: since this macro needs to generate an object containing the
+/// event processing recipe, the body expressions are placed inside lambdas, and
+/// therefore contextual expressions such as `break`, `continue` and `return`
+/// are not valid.
 macro_rules! select_merge {
     { $( $var:pat = $event:expr => $body:expr ),+ $(,)? } => {{
         #[allow(clippy::redundant_closure)]
