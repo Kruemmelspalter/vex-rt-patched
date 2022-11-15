@@ -192,7 +192,7 @@ fn main() -> Result<(), io::Error> {
 /// Finds the GCC sysroot.
 fn get_sysroot() -> String {
     let output = process::Command::new("arm-none-eabi-gcc")
-        .args(&["--print-sysroot"])
+        .args(["--print-sysroot"])
         .output()
         .expect("failed to execute arm-none-eabi-gcc. is the arm-none-eabi toolchain installed?");
 
@@ -258,7 +258,7 @@ fn generate_bindings(
     bindings
         .generate()
         .expect("Could not generate bindings.")
-        .write_to_file(&bindings_gen_path)?;
+        .write_to_file(bindings_gen_path)?;
 
     Ok(())
 }

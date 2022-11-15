@@ -1,4 +1,7 @@
-use alloc::sync::{Arc, Weak};
+use alloc::{
+    sync::{Arc, Weak},
+    vec::Vec,
+};
 use by_address::ByAddress;
 use core::{cmp::min, time::Duration};
 use owner_monad::OwnerMut;
@@ -32,44 +35,17 @@ type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
 pub struct Context(Arc<ContextValue>);
 
 impl Context {
+    #[inline]
     /// Creates a new global context (i.e., one which has no parent or
     /// deadline).
     pub fn new_global() -> Self {
-        Self(Arc::new((
-            None,
-            Mutex::new(Some(ContextData {
-                _parent: None,
-                event: Event::new(),
-                children: Set::new(),
-            })),
-        )))
+        Self::new_internal(&[], None)
     }
 
     #[inline]
     /// Cancels a context. This is a no-op if the context is already cancelled.
     pub fn cancel(&self) {
         cancel(&self.0.as_ref().1);
-    }
-
-    #[inline]
-    /// Forks a context. The new context's parent is `self`.
-    pub fn fork(&self) -> Self {
-        self.fork_internal(self.0 .0)
-    }
-
-    /// Forks a context. Equivalent to [`Context::fork()`], except that the new
-    /// context has a deadline which is the earlier of the one in `self` and
-    /// the one provided.
-    pub fn fork_with_deadline(&self, deadline: Instant) -> Self {
-        self.fork_internal(Some(self.0 .0.map_or(deadline, |d| min(d, deadline))))
-    }
-
-    #[inline]
-    /// Forks a context. Equivalent to [`Context::fork_with_deadline()`], except
-    /// that the deadline is calculated from the current time and the
-    /// provided timeout duration.
-    pub fn fork_with_timeout(&self, timeout: Duration) -> Self {
-        self.fork_with_deadline(time_since_start() + timeout)
     }
 
     /// A [`Selectable`] event which occurs when the context is
@@ -114,22 +90,79 @@ impl Context {
         }
     }
 
-    fn fork_internal(&self, deadline: Option<Instant>) -> Self {
+    fn new_internal(parents: &[&Self], mut deadline: Option<Instant>) -> Self {
+        deadline = parents
+            .iter()
+            .filter_map(|parent| parent.0 .0)
+            .min()
+            .map_or(deadline, |d1| Some(deadline.map_or(d1, |d2| min(d1, d2))));
         let ctx = Self(Arc::new((deadline, Mutex::new(None))));
-        let parent_handle = insert(ContextHandle(Arc::downgrade(&self.0)), ctx.0.clone().into());
-        if parent_handle.is_some() {
-            *ctx.0 .1.lock() = Some(ContextData {
-                _parent: parent_handle,
-                event: Event::new(),
-                children: Set::new(),
-            });
+        let mut parent_handles = Vec::new();
+        parent_handles.reserve_exact(parents.len());
+        for parent in parents {
+            if let Some(handle) = insert(
+                ContextHandle(Arc::downgrade(&parent.0)),
+                ctx.0.clone().into(),
+            ) {
+                parent_handles.push(handle);
+            } else {
+                return ctx;
+            }
         }
+        *ctx.0 .1.lock() = Some(ContextData {
+            _parents: parent_handles,
+            event: Event::new(),
+            children: Set::new(),
+        });
         ctx
     }
 }
 
+/// Describes an object from which a child context can be created. Implemented
+/// for contexts and for slices of contexts.
+pub trait ParentContext {
+    /// Forks a context. The new context's parent(s) are `self`.
+    fn fork(&self) -> Context;
+
+    /// Forks a context. Equivalent to [`Self::fork()`], except that the new
+    /// context has a deadline which is the earliest of those in `self` and
+    /// the one provided.
+    fn fork_with_deadline(&self, deadline: Instant) -> Context;
+
+    /// Forks a context. Equivalent to [`Self::fork_with_deadline()`], except
+    /// that the deadline is calculated from the current time and the
+    /// provided timeout duration.
+    fn fork_with_timeout(&self, timeout: Duration) -> Context {
+        self.fork_with_deadline(time_since_start() + timeout)
+    }
+}
+
+impl ParentContext for Context {
+    #[inline]
+    fn fork(&self) -> Context {
+        [self].fork()
+    }
+
+    #[inline]
+    fn fork_with_deadline(&self, deadline: Instant) -> Context {
+        [self].fork_with_deadline(deadline)
+    }
+}
+
+impl ParentContext for [&Context] {
+    #[inline]
+    fn fork(&self) -> Context {
+        Context::new_internal(self, None)
+    }
+
+    #[inline]
+    fn fork_with_deadline(&self, deadline: Instant) -> Context {
+        Context::new_internal(self, Some(deadline))
+    }
+}
+
 struct ContextData {
-    _parent: Option<SetHandle<ByAddress<Arc<ContextValue>>, ContextHandle>>,
+    _parents: Vec<SetHandle<ByAddress<Arc<ContextValue>>, ContextHandle>>,
     event: Event,
     children: Set<ByAddress<Arc<ContextValue>>>,
 }
@@ -173,7 +206,6 @@ impl OwnerMut<Set<ByAddress<Arc<ContextValue>>>> for ContextHandle {
     }
 }
 
-#[inline]
 fn cancel(m: &Mutex<Option<ContextData>>) {
     m.lock().take();
 }
