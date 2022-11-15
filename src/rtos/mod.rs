@@ -239,33 +239,33 @@ impl Task {
 
     #[inline]
     /// Gets the current task.
-    pub fn current() -> Task {
-        Task(unsafe { bindings::task_get_current() })
+    pub fn current() -> Self {
+        Self(unsafe { bindings::task_get_current() })
     }
 
     /// Finds a task by its name.
-    pub fn find_by_name(name: &str) -> Result<Task, Error> {
+    pub fn find_by_name(name: &str) -> Result<Self, Error> {
         let ptr = (with_cstring(name.into(), |name| unsafe {
             bindings::task_get_by_name(name.into_raw()).check()
         }) as Result<*mut c_void, Error>)?;
         if ptr.is_null() {
             Err(Error::Custom(format!("task not found: {}", name)))
         } else {
-            Ok(Task(ptr))
+            Ok(Self(ptr))
         }
     }
 
     #[inline]
     /// Spawns a new task with no name and the default priority and stack depth.
-    pub fn spawn<F>(f: F) -> Result<Task, Error>
+    pub fn spawn<F>(f: F) -> Result<Self, Error>
     where
         F: FnOnce() + Send + 'static,
     {
-        Task::spawn_ext("", Self::DEFAULT_PRIORITY, Self::DEFAULT_STACK_DEPTH, f)
+        Self::spawn_ext("", Self::DEFAULT_PRIORITY, Self::DEFAULT_STACK_DEPTH, f)
     }
 
     /// Spawns a new task with the specified name, priority and stack depth.
-    pub fn spawn_ext<F>(name: &str, priority: u32, stack_depth: u16, f: F) -> Result<Task, Error>
+    pub fn spawn_ext<F>(name: &str, priority: u32, stack_depth: u16, f: F) -> Result<Self, Error>
     where
         F: FnOnce() + Send + 'static,
     {
@@ -277,11 +277,11 @@ impl Task {
         let cb = Box::new(f);
         unsafe {
             let arg = Box::into_raw(cb);
-            let r = Task::spawn_raw(name, priority, stack_depth, run::<F>, arg as *mut _);
+            let r = Self::spawn_raw(name, priority, stack_depth, run::<F>, arg as *mut _);
             if r.is_err() {
                 // We need to re-box the pointer if the task could not be created, to avoid a
                 // memory leak.
-                Box::from_raw(arg);
+                drop(Box::from_raw(arg));
             }
             r
         }
@@ -290,19 +290,21 @@ impl Task {
     #[inline]
     /// Spawns a new task from a C function pointer and an arbitrary data
     /// pointer.
-    pub fn spawn_raw(
+    ///
+    /// # Safety
+    ///
+    /// This is unsafe because it
+    pub unsafe fn spawn_raw(
         name: &str,
         priority: u32,
         stack_depth: u16,
         f: unsafe extern "C" fn(arg1: *mut libc::c_void),
         arg: *mut libc::c_void,
-    ) -> Result<Task, Error> {
+    ) -> Result<Self, Error> {
         with_cstring(name.into(), |cname| {
-            Ok(Task(
-                unsafe {
-                    bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw())
-                }
-                .check()?,
+            Ok(Self(
+                bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw())
+                    .check()?,
             ))
         })
     }
