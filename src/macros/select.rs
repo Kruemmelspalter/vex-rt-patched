@@ -25,8 +25,8 @@
 /// }
 /// ```
 macro_rules! select {
-    { $( $var:pat = $event:expr => $body:expr ),+ $(,)? } => {{
-        let mut events = $crate::select_head!($($event,)+);
+    { $( $var:pat = $event:expr $(; $sub:pat = $dep:expr)* => $body:expr ),+ $(,)? } => {{
+        let mut events = $crate::select_head!($($event $(; $sub = $dep)* ;;)+);
         $crate::select_body!{loop {
             $crate::rtos::GenericSleep::sleep($crate::select_sleep!(events; $($event,)+));
             events = $crate::select_match!{events; |r| r; $($event,)+};
@@ -37,8 +37,26 @@ macro_rules! select {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! select_head {
-    ($event:expr,) => {$event};
-    ($event:expr, $($rest:expr,)+) => {($event, $crate::select_head!($($rest,)*))}
+    ($event:expr $(; $sub:pat = $dep:expr)* ;;) => {
+        $crate::select_init!($event $(; $sub = $dep)*)
+    };
+    ($event:expr $(; $sub:pat = $dep:expr)* ;; $($rest:tt ;;)+) => {
+        ($crate::select_init!($event $(; $sub = $dep)*), $crate::select_head!($($rest ;;)*))
+    };
+}
+
+#[macro_export]
+#[doc(hidden)]
+macro_rules! select_init {
+    ($(@NEXT)? $event:expr) => {
+        $event
+    };
+    ($event:expr $(; $sub:pat = $dep:expr)+) => {
+        $crate::rtos::select_option($crate::select_init!(@NEXT ::core::option::Option::Some($event) $(; $sub = $dep)+))
+    };
+    (@NEXT $event:expr; $sub1:pat = $dep1:expr $(; $sub:pat = $dep:expr)*) => {
+        $crate::select_init!(@NEXT if let $sub1 = $dep1 { $event } else { ::core::option::Option::None } $(; $sub = $dep)*)
+    };
 }
 
 #[macro_export]
@@ -98,9 +116,9 @@ macro_rules! select_sleep {
 /// therefore contextual expressions such as `break`, `continue` and `return`
 /// are not valid.
 macro_rules! select_merge {
-    { $( $var:pat = $event:expr => $body:expr ),+ $(,)? } => {{
+    { $( $var:pat = $event:expr $(; $sub:pat = $dep:expr)* => $body:expr ),+ $(,)? } => {{
         #[allow(clippy::redundant_closure)]
-        let r = $crate::select_any!($($crate::rtos::select_map($event, |$var| $body)),+);
+        let r = $crate::select_any!($($crate::rtos::select_map($event, |$var| $body) $(; $sub = $dep)*),+);
         r
     }};
 }
@@ -110,6 +128,10 @@ macro_rules! select_merge {
 /// [`crate::rtos::Selectable`]) from a set of events which all have the same
 /// result type, by repeated application of [`crate::rtos::select_either`].
 macro_rules! select_any {
-    ($event:expr $(,)?) => {$event};
-    ($event:expr, $($rest:expr),+ $(,)?) => {$crate::rtos::select_either($event, $crate::select_any!($($rest),+))};
+    ($event:expr $(; $sub:pat = $dep:expr)* $(,)?) => {
+        $crate::select_init!($event $(; $sub = $dep)*)
+    };
+    ($event:expr $(; $sub1:pat = $dep1:expr)*, $($rest:expr $(; $sub:pat = $dep:expr)*),+ $(,)?) => {
+        $crate::rtos::select_either($crate::select_init!($event $(; $sub1 = $dep1)*), $crate::select_any!($($rest $(; $sub = $dep)*),+))
+    };
 }
