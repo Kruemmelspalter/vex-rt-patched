@@ -26,6 +26,7 @@ by_address = "1.0.4"
 owner-monad = "0.1.0"
 raii-map = "0.1.0"
 queue-model = "0.1.2"
+slice-copy = { git = "https://github.com/nickmertin/slice-copy.git", branch = "no-std" }
 
 [build-dependencies]
 bindgen = "0.61.0"
