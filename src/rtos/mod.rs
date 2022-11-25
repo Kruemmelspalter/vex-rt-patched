@@ -41,7 +41,7 @@ impl Instant {
         Self(
             millis
                 .checked_mul(1000)
-                .expect("overflow when creating instant from seconds"),
+                .expect("overflow when creating Instant from milliseconds"),
         )
     }
 
@@ -50,7 +50,7 @@ impl Instant {
     pub fn from_secs(secs: u64) -> Self {
         Self(
             secs.checked_mul(1000000)
-                .expect("overflow when creating instant from seconds"),
+                .expect("overflow when creating Instant from seconds"),
         )
     }
 
