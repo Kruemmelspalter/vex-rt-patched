@@ -2,6 +2,7 @@
 #![no_main]
 
 use core::time::Duration;
+use uom::si::{angular_velocity::revolution_per_minute, f64::AngularVelocity};
 use vex_rt::prelude::*;
 
 struct DriveTrain {
@@ -61,9 +62,10 @@ impl Bot {
     fn grip(&self, speed: i8) -> Result<(), MotorError> {
         let mut flag: u8 = 0;
         self.claw.lock().0.move_i8(speed)?;
+        let threshold = AngularVelocity::new::<revolution_per_minute>(10.0);
         while flag < 5 {
             flag = match self.claw.lock().0.get_actual_velocity() {
-                Ok(v) if (v > -10.0 && v < 10.0) => flag + 1,
+                Ok(v) if (v > -threshold && v < threshold) => flag + 1,
                 Ok(_) => 0,
                 _ => flag,
             };
@@ -92,23 +94,16 @@ impl Robot for Bot {
         Bot {
             controller: p.master_controller,
             drivetrain: Mutex::new(DriveTrain {
-                left: p
-                    .port01
-                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false),
-                right: p
-                    .port10
-                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true),
+                left: p.port01.into_motor(Gearset::EighteenToOne, false).unwrap(),
+                right: p.port10.into_motor(Gearset::EighteenToOne, true).unwrap(),
             }),
-            arm: Mutex::new(Arm(p.port08.into_motor(
-                Gearset::EighteenToOne,
-                EncoderUnits::Degrees,
-                true,
-            ))),
-            claw: Mutex::new(Claw(p.port03.into_motor(
-                Gearset::EighteenToOne,
-                EncoderUnits::Degrees,
-                false,
-            ))),
+            arm: Mutex::new(Arm(p
+                .port08
+                .into_motor(Gearset::EighteenToOne, true)
+                .unwrap())),
+            claw: Mutex::new(Claw(
+                p.port03.into_motor(Gearset::EighteenToOne, false).unwrap(),
+            )),
         }
     }
 
