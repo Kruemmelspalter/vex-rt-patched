@@ -4,6 +4,7 @@ version = "0.13.0"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
+    "Brett Etter <buzzec@buzzec.net>",
     "Jai Agrawal <jaiagr@pm.me>",
     "Eric Dong <aderic6@gmail.com>",
 ]
