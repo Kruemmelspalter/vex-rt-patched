@@ -226,10 +226,6 @@ impl<T> TryQueue for FreeRtosQueue<T> {
     fn try_pop(&self) -> Option<Self::Item> {
         self.try_recv()
     }
-
-    fn clear(&self) {
-        while self.try_recv().is_some() {}
-    }
 }
 
 impl<T> Queue for FreeRtosQueue<T> {
