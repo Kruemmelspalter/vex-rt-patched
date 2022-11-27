@@ -1,7 +1,8 @@
 //! ADIPort.
 
 use super::{
-    AdiAnalog, AdiAnalogError, AdiEncoder, AdiEncoderError, AdiGyro, AdiGyroError, AdiUltrasonic,
+    AdiAnalog, AdiAnalogError, AdiDigitalInput, AdiDigitalInputError, AdiDigitalOutput,
+    AdiDigitalOutputError, AdiEncoder, AdiEncoderError, AdiGyro, AdiGyroError, AdiUltrasonic,
     AdiUltrasonicError,
 };
 
@@ -41,25 +42,36 @@ impl AdiPort {
         }
     }
 
-    /// Turns this port into an ADI analog
+    /// Turns this port into an ADI analog input.
     #[inline]
     pub fn into_adi_analog(self) -> Result<AdiAnalog, AdiAnalogError> {
         self.try_into()
     }
 
-    /// Turns this and another port into an encoder
+    /// Turns this port into an ADI digital input.
+    #[inline]
+    pub fn into_adi_digital_input(self) -> Result<AdiDigitalInput, AdiDigitalInputError> {
+        self.try_into()
+    }
+    /// Turns this port into an ADI digital output.
+    #[inline]
+    pub fn into_adi_digital_output(self) -> Result<AdiDigitalOutput, AdiDigitalOutputError> {
+        self.try_into()
+    }
+
+    /// Turns this and another port into an ADI encoder.
     #[inline]
     pub fn into_adi_encoder(self, bottom: Self) -> Result<AdiEncoder, AdiEncoderError> {
         (self, bottom).try_into()
     }
 
-    /// Turns this port into a gyro
+    /// Turns this port into an ADI gyro.
     #[inline]
     pub fn into_adi_gyro(self, multiplier: f64) -> Result<AdiGyro, AdiGyroError> {
         (self, multiplier).try_into()
     }
 
-    /// Turns this and another port into an ultrasonic sensor
+    /// Turns this and another port into an ADI ultrasonic sensor.
     #[inline]
     pub fn into_adi_ultrasonic(self, bottom: Self) -> Result<AdiUltrasonic, AdiUltrasonicError> {
         (self, bottom).try_into()
@@ -72,6 +84,24 @@ impl TryFrom<AdiPort> for AdiAnalog {
     /// Converts a `AdiPort` into a [`AdiAnalog`].
     fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
         unsafe { AdiAnalog::new(port.port, port.expander_port) }
+    }
+}
+
+impl TryFrom<AdiPort> for AdiDigitalInput {
+    type Error = AdiDigitalInputError;
+
+    /// Converts a `AdiPort` into a [`AdiDigitalInput`].
+    fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
+        unsafe { AdiDigitalInput::new(port.port, port.expander_port) }
+    }
+}
+
+impl TryFrom<AdiPort> for AdiDigitalOutput {
+    type Error = AdiDigitalOutputError;
+
+    /// Converts a `AdiPort` into a [`AdiDigitalOutput`].
+    fn try_from(port: AdiPort) -> Result<Self, Self::Error> {
+        unsafe { AdiDigitalOutput::new(port.port, port.expander_port) }
     }
 }
 

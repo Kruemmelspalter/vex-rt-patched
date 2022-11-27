@@ -59,7 +59,7 @@ impl<'a, T: Clone> BroadcastListener<'a, T> {
     #[inline]
     /// Get the latest unprocessed value from the event, if there is one.
     pub fn next_value(&mut self) -> Option<T> {
-        Self::next_value_impl(&mut self.data, &self.mtx)
+        Self::next_value_impl(&mut self.data, self.mtx)
     }
 
     #[inline]
@@ -76,7 +76,7 @@ impl<'a, T: Clone> BroadcastListener<'a, T> {
             fn poll(mut self) -> Result<T, Self> {
                 let data = &mut self.data;
                 self.handle
-                    .with(|mtx| BroadcastListener::next_value_impl(data, &mtx))
+                    .with(|mtx| BroadcastListener::next_value_impl(data, mtx))
                     .flatten()
                     .ok_or(self)
             }

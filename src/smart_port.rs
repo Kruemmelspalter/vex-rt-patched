@@ -2,6 +2,7 @@
 
 use crate::{
     adi::AdiExpander,
+    bindings,
     distance::DistanceSensor,
     error::Error,
     imu::InertialSensor,
@@ -32,6 +33,12 @@ impl SmartPort {
             port
         );
         Self { port }
+    }
+
+    #[inline]
+    /// Checks the type of device currently connected to the port.
+    pub fn plugged_type(&self) -> DeviceType {
+        unsafe { smart_port_type(self.port) }
     }
 
     /// Converts a `SmartPort` into a [`Motor`](crate::motor::Motor).
@@ -109,4 +116,72 @@ impl TryFrom<(SmartPort, bool)> for RotationSensor {
     fn try_from((port, reversed): (SmartPort, bool)) -> Result<Self, Self::Error> {
         unsafe { RotationSensor::new(port.port, reversed) }
     }
+}
+
+/// Represents the type of device plugged into a smart port.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DeviceType {
+    /// No device.
+    None,
+
+    /// V5 Smart Motor.
+    Motor,
+
+    /// V5 Rotation Sensor
+    Rotation,
+
+    /// V5 Inertial Sensor
+    Imu,
+
+    /// V5 Distance Sensor.
+    Distance,
+
+    /// V5 Robot Radio.
+    Radio,
+
+    /// V5 Vision Sensor.
+    Vision,
+
+    /// V5 3-Wire Expander.
+    Adi,
+
+    /// V5 Optical Sensor.
+    Optical,
+
+    /// Generic serial mode.
+    Serial,
+
+    /// Undefined sensor type.
+    Undefined,
+
+    /// Unrecognized value from PROS/vexOS.
+    Unknown(u32),
+}
+
+impl From<bindings::v5_device_e_t> for DeviceType {
+    fn from(t: bindings::v5_device_e_t) -> Self {
+        match t {
+            bindings::v5_device_e_E_DEVICE_NONE => Self::None,
+            bindings::v5_device_e_E_DEVICE_MOTOR => Self::Motor,
+            bindings::v5_device_e_E_DEVICE_ROTATION => Self::Rotation,
+            bindings::v5_device_e_E_DEVICE_IMU => Self::Imu,
+            bindings::v5_device_e_E_DEVICE_DISTANCE => Self::Distance,
+            bindings::v5_device_e_E_DEVICE_RADIO => Self::Radio,
+            bindings::v5_device_e_E_DEVICE_VISION => Self::Vision,
+            bindings::v5_device_e_E_DEVICE_ADI => Self::Adi,
+            bindings::v5_device_e_E_DEVICE_OPTICAL => Self::Optical,
+            bindings::v5_device_e_E_DEVICE_GENERIC => Self::Serial,
+            bindings::v5_device_e_E_DEVICE_UNDEFINED => Self::Undefined,
+            _ => Self::Unknown(t),
+        }
+    }
+}
+
+/// Checks the type of device currently connected to a smart port.
+///
+/// # Safety
+/// This is unsafe because it may be unsequenced relative to operations on the
+/// smart port. Prefer [`SmartPort::plugged_type()`] instead.
+pub unsafe fn smart_port_type(port: u8) -> DeviceType {
+    bindings::registry_get_plugged_type(port - 1).into()
 }

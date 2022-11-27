@@ -22,7 +22,7 @@ const TIMEOUT_MAX: u32 = 0xffffffff;
 /// Represents a time on a monotonically increasing clock (i.e., time since
 /// program start).
 ///
-/// This type has a precision of 1 millisecond.
+/// This type has a precision of 1 microsecond.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Instant(u64);
 
@@ -41,7 +41,7 @@ impl Instant {
         Self(
             millis
                 .checked_mul(1000)
-                .expect("overflow when creating instant from seconds"),
+                .expect("overflow when creating Instant from milliseconds"),
         )
     }
 
@@ -50,7 +50,7 @@ impl Instant {
     pub fn from_secs(secs: u64) -> Self {
         Self(
             secs.checked_mul(1000000)
-                .expect("overflow when creating instant from seconds"),
+                .expect("overflow when creating Instant from seconds"),
         )
     }
 
@@ -239,33 +239,33 @@ impl Task {
 
     #[inline]
     /// Gets the current task.
-    pub fn current() -> Task {
-        Task(unsafe { bindings::task_get_current() })
+    pub fn current() -> Self {
+        Self(unsafe { bindings::task_get_current() })
     }
 
     /// Finds a task by its name.
-    pub fn find_by_name(name: &str) -> Result<Task, Error> {
+    pub fn find_by_name(name: &str) -> Result<Self, Error> {
         let ptr = (with_cstring(name.into(), |name| unsafe {
             bindings::task_get_by_name(name.into_raw()).check()
         }) as Result<*mut c_void, Error>)?;
         if ptr.is_null() {
             Err(Error::Custom(format!("task not found: {}", name)))
         } else {
-            Ok(Task(ptr))
+            Ok(Self(ptr))
         }
     }
 
     #[inline]
     /// Spawns a new task with no name and the default priority and stack depth.
-    pub fn spawn<F>(f: F) -> Result<Task, Error>
+    pub fn spawn<F>(f: F) -> Result<Self, Error>
     where
         F: FnOnce() + Send + 'static,
     {
-        Task::spawn_ext("", Self::DEFAULT_PRIORITY, Self::DEFAULT_STACK_DEPTH, f)
+        Self::spawn_ext("", Self::DEFAULT_PRIORITY, Self::DEFAULT_STACK_DEPTH, f)
     }
 
     /// Spawns a new task with the specified name, priority and stack depth.
-    pub fn spawn_ext<F>(name: &str, priority: u32, stack_depth: u16, f: F) -> Result<Task, Error>
+    pub fn spawn_ext<F>(name: &str, priority: u32, stack_depth: u16, f: F) -> Result<Self, Error>
     where
         F: FnOnce() + Send + 'static,
     {
@@ -277,11 +277,11 @@ impl Task {
         let cb = Box::new(f);
         unsafe {
             let arg = Box::into_raw(cb);
-            let r = Task::spawn_raw(name, priority, stack_depth, run::<F>, arg as *mut _);
+            let r = Self::spawn_raw(name, priority, stack_depth, run::<F>, arg as *mut _);
             if r.is_err() {
                 // We need to re-box the pointer if the task could not be created, to avoid a
                 // memory leak.
-                Box::from_raw(arg);
+                drop(Box::from_raw(arg));
             }
             r
         }
@@ -301,13 +301,11 @@ impl Task {
         stack_depth: u16,
         f: unsafe extern "C" fn(arg1: *mut libc::c_void),
         arg: *mut libc::c_void,
-    ) -> Result<Task, Error> {
+    ) -> Result<Self, Error> {
         with_cstring(name.into(), |cname| {
-            Ok(Task(
-                unsafe {
-                    bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw())
-                }
-                .check()?,
+            Ok(Self(
+                bindings::task_create(Some(f), arg, priority, stack_depth, cname.into_raw())
+                    .check()?,
             ))
         })
     }
@@ -463,7 +461,8 @@ impl GenericSleep {
     }
 }
 
-/// Represents a future event which can be used with the [`select!`] macro.
+/// Represents a future event which can be used with the
+/// [`select!`](crate::select!) macro.
 pub trait Selectable<T = ()>: Sized {
     /// Processes the event if it is ready, consuming the event object;
     /// otherwise, it provides a replacement event object.
@@ -532,6 +531,37 @@ pub fn select_either<'a, T: 'a>(
     }
 
     EitherSelect(fst, snd, PhantomData)
+}
+
+#[inline]
+/// Creates a new [`Selectable`] event which never completes if the given base
+/// event is None.
+pub fn select_option<'a, T: 'a>(base: Option<impl Selectable<T> + 'a>) -> impl Selectable<T> + 'a {
+    struct OptionSelect<T, E: Selectable<T>>(Option<E>, PhantomData<T>);
+
+    impl<T, E: Selectable<T>> Selectable<T> for OptionSelect<T, E> {
+        fn poll(self) -> Result<T, Self> {
+            Err(Self(
+                if let Some(e) = self.0 {
+                    match e.poll() {
+                        Ok(r) => return Ok(r),
+                        Err(e) => Some(e),
+                    }
+                } else {
+                    None
+                },
+                PhantomData,
+            ))
+        }
+
+        fn sleep(&self) -> GenericSleep {
+            self.0
+                .as_ref()
+                .map_or(GenericSleep::NotifyTake(None), Selectable::sleep)
+        }
+    }
+
+    OptionSelect(base, PhantomData)
 }
 
 #[inline]

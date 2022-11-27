@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(array_map)]
 
 extern crate alloc;
 

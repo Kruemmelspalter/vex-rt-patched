@@ -1,4 +1,4 @@
-//! For use with the [`entry`] macro.
+//! For use with the [`entry!`](crate::entry!) macro.
 
 use crate::{io::println, peripherals::Peripherals, rtos::Context};
 

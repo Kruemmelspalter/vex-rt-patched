@@ -1,15 +1,24 @@
 //! Controller API.
 
-use core::convert::TryInto;
+use alloc::collections::VecDeque;
+use core::{convert::TryInto, fmt::Debug, time::Duration};
+use slice_copy::copy;
 
 use crate::{
     bindings,
     error::{get_errno, Error},
+    io::eprintln,
+    rtos::{delay_until, queue, time_since_start, SendQueue, Task},
+    select,
 };
+
+const SCREEN_SUCCESS_DELAY: Duration = Duration::from_millis(50);
+const SCREEN_FAILURE_DELAY: Duration = Duration::from_millis(5);
 
 /// Represents a Vex controller.
 #[derive(Debug)]
 pub struct Controller {
+    id: bindings::controller_id_e_t,
     /// The left analog stick.
     pub left_stick: AnalogStick,
     /// The right analog stick.
@@ -38,6 +47,8 @@ pub struct Controller {
     pub a: Button,
     /// The "B" button.
     pub b: Button,
+    /// The LCD screen
+    pub screen: Screen,
 }
 
 impl Controller {
@@ -51,6 +62,7 @@ impl Controller {
     pub unsafe fn new(id: ControllerId) -> Self {
         let id: bindings::controller_id_e_t = id.into();
         Controller {
+            id,
             left_stick: AnalogStick {
                 id,
                 x_channel: bindings::controller_analog_e_t_E_CONTROLLER_ANALOG_LEFT_X,
@@ -109,6 +121,32 @@ impl Controller {
                 id,
                 button: bindings::controller_digital_e_t_E_CONTROLLER_DIGITAL_A,
             },
+            screen: Screen { id, queue: None },
+        }
+    }
+
+    /// Returns false or true if the controller is connected.
+    pub fn is_connected(&self) -> Result<bool, ControllerError> {
+        match unsafe { bindings::controller_is_connected(self.id) } {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(ControllerError::from_errno()),
+        }
+    }
+
+    /// Gets the battery level of the controller
+    pub fn get_battery_level(&self) -> Result<i32, ControllerError> {
+        match unsafe { bindings::controller_get_battery_level(self.id) } {
+            bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
+            x => Ok(x),
+        }
+    }
+
+    /// Gets the battery level of the controller
+    pub fn get_battery_capacity(&self) -> Result<i32, ControllerError> {
+        match unsafe { bindings::controller_get_battery_capacity(self.id) } {
+            bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
+            x => Ok(x),
         }
     }
 }
@@ -143,7 +181,7 @@ impl AnalogStick {
                 Ok(converted_x) => Ok(converted_x),
                 Err(_) => {
                     panic!(
-                        "bindings::motor_get_direction returned unexpected value: {}",
+                        "bindings::controller_get_analog returned unexpected value: {}",
                         x
                     )
                 }
@@ -160,8 +198,8 @@ pub struct Button {
 }
 
 impl Button {
-    /// Checks if a given button is pressed. Returns 0 if the controller is not
-    /// connected.
+    /// Checks if a given button is pressed. Returns false if the controller is
+    /// not connected.
     pub fn is_pressed(&self) -> Result<bool, ControllerError> {
         match unsafe { bindings::controller_get_digital(self.id, self.button) } {
             0 => Ok(false),
@@ -169,6 +207,259 @@ impl Button {
             _ => Err(ControllerError::from_errno()),
         }
     }
+}
+
+/// Represents the screen on a Vex controller
+pub struct Screen {
+    id: bindings::controller_id_e_t,
+    queue: Option<SendQueue<ScreenCommand>>,
+}
+
+impl Screen {
+    /// Clears all of the lines of the controller screen
+    pub fn clear(&mut self) {
+        self.command(ScreenCommand::Clear);
+    }
+
+    /// Clears an individual line of the controller screen. Lines range from 0
+    /// to 2
+    pub fn clear_line(&mut self, line: u8) {
+        if line > 2 {
+            return;
+        }
+        self.command(ScreenCommand::ClearLine(line));
+    }
+
+    /// Prints text to the controller LCD screen. Lines range from 0 to 2.
+    /// Columns range from 0 to 18
+    pub fn print(&mut self, line: u8, column: u8, str: &str) {
+        if line > 2 || column > 18 {
+            return;
+        }
+        let mut chars: [libc::c_char; 19] = Default::default();
+        copy(&mut chars, str.as_bytes());
+        self.command(ScreenCommand::Print {
+            chars,
+            line,
+            column,
+            length: str.as_bytes().len() as u8,
+        });
+    }
+
+    /// Rumble the controller. Rumble pattern is a string consisting of the
+    /// characters ‘.’, ‘-’, and ‘ ‘, where dots are short rumbles, dashes are
+    /// long rumbles, and spaces are pauses; all other characters are ignored.
+    /// Maximum supported length is 8 characters.
+    pub fn rumble(&mut self, rumble_pattern: &str) {
+        let mut pattern: [libc::c_char; 8] = Default::default();
+        let mut i = 0;
+        for c in rumble_pattern.chars() {
+            match c {
+                '.' | '-' | '_' => {
+                    pattern[i] = c as libc::c_char;
+                    i += 1;
+                }
+                _ => {}
+            }
+            if i >= pattern.len() {
+                break;
+            }
+        }
+        self.command(ScreenCommand::Rumble(pattern));
+    }
+
+    fn command(&mut self, cmd: ScreenCommand) {
+        self.queue().send(cmd);
+    }
+
+    fn queue(&mut self) -> &mut SendQueue<ScreenCommand> {
+        self.queue.get_or_insert_with(|| {
+            let name = match self.id {
+                bindings::controller_id_e_t_E_CONTROLLER_MASTER => "controller-screen-master",
+                bindings::controller_id_e_t_E_CONTROLLER_PARTNER => "controller-screen-partner",
+                _ => "",
+            };
+            let id = self.id;
+            let (send, recv) = queue(VecDeque::<ScreenCommand>::new());
+            Task::spawn_ext(
+                name,
+                bindings::TASK_PRIORITY_MAX,
+                bindings::TASK_STACK_DEPTH_DEFAULT as u16,
+                move || {
+                    let mut delay_target = None;
+                    let mut offset = 0usize;
+                    let mut clear = false;
+                    let mut buffer = [ScreenRow::default(); 3];
+                    let mut rumble: Option<[libc::c_char; 9]> = None;
+                    'main: loop {
+                        let command: Option<ScreenCommand> = select! {
+                            cmd = recv.select() => Some(cmd),
+                            _ = delay_until(t); Some(t) = delay_target => None,
+                        };
+                        if let Some(cmd) = command {
+                            match cmd {
+                                ScreenCommand::Clear => {
+                                    offset = 0;
+                                    clear = true;
+                                    buffer = Default::default();
+                                }
+                                ScreenCommand::ClearLine(line) => {
+                                    let row = &mut buffer[line as usize];
+                                    *row = ScreenRow::default();
+                                    row.needs_clear = true;
+                                }
+                                ScreenCommand::Print {
+                                    chars,
+                                    line,
+                                    column,
+                                    length,
+                                } => {
+                                    let row = &mut buffer[line as usize];
+                                    copy(
+                                        &mut row.chars[column as usize..],
+                                        &chars[..length as usize],
+                                    );
+                                    row.dirty = true;
+                                }
+                                ScreenCommand::Rumble(pattern) => {
+                                    let mut buf: [libc::c_char; 9] = Default::default();
+                                    copy(&mut buf, &pattern);
+                                    rumble = Some(buf);
+                                }
+                                ScreenCommand::Stop => break,
+                            }
+                        }
+                        if let Some(pattern) = rumble {
+                            match unsafe { bindings::controller_rumble(id, pattern.as_ptr()) } {
+                                1 => {
+                                    delay_target = Some(time_since_start() + SCREEN_SUCCESS_DELAY);
+                                    rumble = None;
+                                }
+                                _ => {
+                                    delay_target = Some(time_since_start() + SCREEN_FAILURE_DELAY);
+                                    Self::print_error()
+                                }
+                            }
+                        } else if clear {
+                            match unsafe { bindings::controller_clear(id) } {
+                                1 => {
+                                    delay_target = Some(time_since_start() + SCREEN_SUCCESS_DELAY);
+                                    clear = false;
+                                }
+                                _ => {
+                                    delay_target = Some(time_since_start() + SCREEN_FAILURE_DELAY);
+                                    Self::print_error()
+                                }
+                            }
+                        } else {
+                            for i in 0..3 {
+                                let index = (offset + i) % buffer.len();
+                                let row = &mut buffer[index];
+                                if row.needs_clear {
+                                    match unsafe {
+                                        bindings::controller_clear_line(id, index as u8)
+                                    } {
+                                        1 => {
+                                            delay_target =
+                                                Some(time_since_start() + SCREEN_SUCCESS_DELAY);
+                                            row.needs_clear = false;
+                                        }
+                                        _ => {
+                                            delay_target =
+                                                Some(time_since_start() + SCREEN_FAILURE_DELAY);
+                                            Self::print_error()
+                                        }
+                                    }
+                                } else if row.dirty {
+                                    match unsafe {
+                                        bindings::controller_set_text(
+                                            id,
+                                            index as u8,
+                                            0,
+                                            row.chars.as_ptr(),
+                                        )
+                                    } {
+                                        1 => {
+                                            delay_target =
+                                                Some(time_since_start() + SCREEN_SUCCESS_DELAY);
+                                            row.dirty = false;
+                                        }
+                                        _ => {
+                                            delay_target =
+                                                Some(time_since_start() + SCREEN_FAILURE_DELAY);
+                                            Self::print_error()
+                                        }
+                                    }
+                                } else {
+                                    continue;
+                                }
+                                offset = i + 1;
+                                continue 'main;
+                            }
+                            // No updates were made; delay indefinitely until next command.
+                            delay_target = None;
+                        }
+                    }
+                },
+            )
+            .unwrap();
+            send
+        })
+    }
+
+    fn print_error() {
+        if get_errno() != libc::EAGAIN {
+            eprintln!("{:?}", ControllerError::from_errno());
+        }
+    }
+}
+
+impl Drop for Screen {
+    fn drop(&mut self) {
+        if self.queue.is_some() {
+            self.command(ScreenCommand::Stop);
+        }
+    }
+}
+
+impl Debug for Screen {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Screen").field("id", &self.id).finish()
+    }
+}
+
+#[derive(Copy, Clone)]
+struct ScreenRow {
+    chars: [libc::c_char; 20],
+    dirty: bool,
+    needs_clear: bool,
+}
+
+impl Default for ScreenRow {
+    fn default() -> Self {
+        // All spaces except last.
+        let mut chars = [0x20; 20];
+        chars[19] = 0;
+        Self {
+            chars,
+            dirty: Default::default(),
+            needs_clear: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum ScreenCommand {
+    Clear,
+    ClearLine(u8),
+    Print {
+        chars: [libc::c_char; 19],
+        line: u8,
+        column: u8,
+        length: u8,
+    },
+    Rumble([libc::c_char; 8]),
+    Stop,
 }
 
 /// Represents the two types of controller.

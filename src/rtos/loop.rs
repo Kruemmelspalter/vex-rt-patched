@@ -7,6 +7,7 @@ use super::{time_since_start, GenericSleep, Instant, Selectable, Task};
 pub struct Loop {
     delta: Duration,
     next: Instant,
+    cycle: usize,
 }
 
 impl Loop {
@@ -16,6 +17,7 @@ impl Loop {
         Loop {
             delta,
             next: time_since_start() + delta,
+            cycle: 0,
         }
     }
 
@@ -25,6 +27,24 @@ impl Loop {
             Task::delay(d);
         }
         self.next += self.delta;
+        self.cycle += 1;
+    }
+
+    #[inline]
+    /// Returns the current cycle index.
+    ///
+    /// This is initially 0 and increments each cycle (i.e., when
+    /// [`delay()`](Self::delay()) returns or `select` successfully
+    /// completes).
+    pub fn cycle(&self) -> usize {
+        self.cycle
+    }
+
+    #[inline]
+    /// Helper function to check whether the cycle index (see
+    /// [`cycle()`](Self::cycle())) is a multiple of `modulus`.
+    pub fn is_mod(&self, modulus: usize) -> bool {
+        self.cycle % modulus == 0
     }
 
     #[inline]
@@ -36,6 +56,7 @@ impl Loop {
             fn poll(self) -> Result<(), Self> {
                 if time_since_start() >= self.0.next {
                     self.0.next += self.0.delta;
+                    self.0.cycle += 1;
                     Ok(())
                 } else {
                     Err(self)

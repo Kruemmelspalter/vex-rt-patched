@@ -5,6 +5,7 @@ use core::convert::TryInto;
 use crate::{
     bindings,
     error::{Error, SentinelError},
+    smart_port::{smart_port_type, DeviceType},
 };
 
 /// Represents the generic serial interface of a smart port.
@@ -20,6 +21,7 @@ impl Serial {
     /// implement [`Robot::new()`](crate::robot::Robot::new()) instead.
     pub unsafe fn new(port: u8, baudrate: i32) -> Result<Self, Error> {
         bindings::serial_enable(port).check()?;
+        while smart_port_type(port) != DeviceType::Serial {}
         bindings::serial_set_baudrate(port, baudrate).check()?;
         Ok(Self(port))
     }
