@@ -1,18 +1,24 @@
 //! FreeRTOS concurrency primitives
 
+use concurrency_traits::{
+    mutex::{ParkMutex, SpinLock},
+    queue::ParkQueue,
+    ConcurrentSystem, ThreadFunctions, ThreadHandle, ThreadParker, ThreadTimeoutParker,
+    TimeFunctions, TryThreadSpawner,
+};
+use core::time::Duration;
+use single_executor::AsyncExecutor;
+
+use crate::{
+    error::Error as VexRtError,
+    rtos::{time_since_start, Instant, Task},
+};
+
 mod mutex;
 mod queue;
 
 pub use mutex::*;
 pub use queue::*;
-
-use crate::error::Error as VexRtError;
-use crate::rtos::{time_since_start, Instant, Task};
-use concurrency_traits::mutex::{ParkMutex, SpinLock};
-use concurrency_traits::queue::ParkQueue;
-use concurrency_traits::*;
-use core::time::Duration;
-use single_executor::AsyncExecutor;
 
 /// A FreeRTOS based [`ParkMutex`].
 pub type ParkMutexFreeRtos<T> = ParkMutex<T, FreeRtosConcurrency>;
@@ -26,6 +32,7 @@ pub type AsyncExecutorFreeRtos<Q> = AsyncExecutor<Q, FreeRtosConcurrency>;
 /// FreeRTOS concurrency bindings.
 #[derive(Copy, Clone, Debug)]
 pub struct FreeRtosConcurrency;
+
 impl TimeFunctions for FreeRtosConcurrency {
     type InstantType = Instant;
 
@@ -34,6 +41,7 @@ impl TimeFunctions for FreeRtosConcurrency {
         time_since_start()
     }
 }
+
 impl ThreadFunctions for FreeRtosConcurrency {
     #[inline]
     fn sleep(duration: Duration) {
@@ -45,6 +53,7 @@ impl ThreadFunctions for FreeRtosConcurrency {
         Task::delay(Duration::from_millis(1));
     }
 }
+
 impl TryThreadSpawner<()> for FreeRtosConcurrency {
     type ThreadHandle = Task;
     type SpawnError = VexRtError;
@@ -56,6 +65,7 @@ impl TryThreadSpawner<()> for FreeRtosConcurrency {
         Task::spawn(func)
     }
 }
+
 impl ThreadParker for FreeRtosConcurrency {
     type ThreadId = Task;
 
@@ -74,13 +84,16 @@ impl ThreadParker for FreeRtosConcurrency {
         Task::current()
     }
 }
+
 impl ThreadTimeoutParker for FreeRtosConcurrency {
     #[inline]
     fn park_timeout(timeout: Duration) {
         Task::notify_take(true, Some(timeout));
     }
 }
+
 impl ConcurrentSystem<()> for FreeRtosConcurrency {}
+
 impl ThreadHandle for Task {
     type ThreadId = Self;
 

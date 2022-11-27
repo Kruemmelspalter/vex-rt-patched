@@ -1,7 +1,11 @@
-use crate::rtos::TIMEOUT_MAX;
-use crate::{bindings, error::*};
 use concurrency_traits::mutex::{CustomMutex, RawMutex, RawTimeoutMutex, RawTryMutex};
 use core::time::Duration;
+
+use crate::{
+    bindings,
+    error::{from_errno, SentinelError},
+    rtos::TIMEOUT_MAX,
+};
 
 /// A FreeRTOS Mutex
 pub type FreeRtosMutex<T> = CustomMutex<T, FreeRtosRawMutex>;
@@ -11,6 +15,7 @@ pub type FreeRtosRecursiveMutex<T> = CustomMutex<T, FreeRtosRawRecursiveMutex>;
 /// A raw mutex from FreeRTOS
 #[derive(Debug)]
 pub struct FreeRtosRawMutex(bindings::mutex_t);
+
 impl FreeRtosRawMutex {
     /// Creates a new recursive mutex
     pub fn new() -> Self {
@@ -21,16 +26,19 @@ impl FreeRtosRawMutex {
         )
     }
 }
+
 impl Drop for FreeRtosRawMutex {
     fn drop(&mut self) {
         unsafe { bindings::mutex_delete(self.0) }
     }
 }
+
 impl Default for FreeRtosRawMutex {
     fn default() -> Self {
         Self::new()
     }
 }
+
 unsafe impl RawTryMutex for FreeRtosRawMutex {
     fn try_lock(&self) -> bool {
         unsafe { bindings::mutex_take(self.0, 0) }
@@ -42,6 +50,7 @@ unsafe impl RawTryMutex for FreeRtosRawMutex {
         }
     }
 }
+
 unsafe impl RawMutex for FreeRtosRawMutex {
     fn lock(&self) {
         if !unsafe { bindings::mutex_take(self.0, TIMEOUT_MAX) } {
@@ -52,17 +61,21 @@ unsafe impl RawMutex for FreeRtosRawMutex {
         }
     }
 }
+
 unsafe impl RawTimeoutMutex for FreeRtosRawMutex {
     fn lock_timeout(&self, timeout: Duration) -> bool {
         unsafe { bindings::mutex_take(self.0, timeout.as_millis() as u32) }
     }
 }
+
 unsafe impl Send for FreeRtosRawMutex {}
+
 unsafe impl Sync for FreeRtosRawMutex {}
 
 /// A recursive raw mutex from FreeRTOS
 #[derive(Debug)]
 pub struct FreeRtosRawRecursiveMutex(bindings::mutex_t);
+
 impl FreeRtosRawRecursiveMutex {
     /// Creates a new recursive mutex
     ///
@@ -78,11 +91,13 @@ impl FreeRtosRawRecursiveMutex {
         )
     }
 }
+
 impl Drop for FreeRtosRawRecursiveMutex {
     fn drop(&mut self) {
         unsafe { bindings::mutex_delete(self.0) }
     }
 }
+
 unsafe impl RawTryMutex for FreeRtosRawRecursiveMutex {
     fn try_lock(&self) -> bool {
         unsafe { bindings::mutex_recursive_take(self.0, 0) }
@@ -94,6 +109,7 @@ unsafe impl RawTryMutex for FreeRtosRawRecursiveMutex {
         }
     }
 }
+
 unsafe impl RawMutex for FreeRtosRawRecursiveMutex {
     fn lock(&self) {
         if !unsafe { bindings::mutex_recursive_take(self.0, TIMEOUT_MAX) } {
@@ -104,10 +120,13 @@ unsafe impl RawMutex for FreeRtosRawRecursiveMutex {
         }
     }
 }
+
 unsafe impl RawTimeoutMutex for FreeRtosRawRecursiveMutex {
     fn lock_timeout(&self, timeout: Duration) -> bool {
         unsafe { bindings::mutex_recursive_take(self.0, timeout.as_millis() as u32) }
     }
 }
+
 unsafe impl Send for FreeRtosRawRecursiveMutex {}
+
 unsafe impl Sync for FreeRtosRawRecursiveMutex {}
