@@ -1,6 +1,5 @@
 //! Controller API.
 
-use alloc::collections::VecDeque;
 use core::{convert::TryInto, time::Duration};
 use slice_copy::copy;
 
@@ -8,7 +7,7 @@ use crate::{
     bindings,
     error::{get_errno, Error},
     io::eprintln,
-    rtos::{delay_until, queue, time_since_start, SendQueue, Task},
+    rtos::{channel, delay_until, time_since_start, SendChannel, Task},
     select,
 };
 
@@ -209,7 +208,7 @@ impl Button {
 /// Represents the screen on a Vex controller
 pub struct Screen {
     id: bindings::controller_id_e_t,
-    queue: Option<SendQueue<ScreenCommand>>,
+    queue: Option<SendChannel<ScreenCommand>>,
 }
 
 impl Screen {
@@ -266,10 +265,12 @@ impl Screen {
     }
 
     fn command(&mut self, cmd: ScreenCommand) {
-        self.queue().send(cmd);
+        select! {
+            _ = self.queue().select(cmd) => {}
+        }
     }
 
-    fn queue(&mut self) -> &mut SendQueue<ScreenCommand> {
+    fn queue(&mut self) -> &mut SendChannel<ScreenCommand> {
         self.queue.get_or_insert_with(|| {
             let name = match self.id {
                 bindings::controller_id_e_t_E_CONTROLLER_MASTER => "controller-screen-master",
@@ -277,7 +278,7 @@ impl Screen {
                 _ => "",
             };
             let id = self.id;
-            let (send, recv) = queue(VecDeque::<ScreenCommand>::new());
+            let (send, recv) = channel();
             Task::spawn_ext(
                 name,
                 bindings::TASK_PRIORITY_MAX,
