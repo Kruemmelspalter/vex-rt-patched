@@ -24,6 +24,7 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "battery_get_current",
     "battery_get_temperature",
     "battery_get_voltage",
+    "competition_get_status",
     "controller_clear",
     "controller_clear_line",
     "controller_get_analog",
@@ -179,6 +180,9 @@ const WHITELISTED_FUNCS: &[&str] = &[
 
 // Variables to be included by bindgen
 const WHITELISTED_VARS: &[&str] = &[
+    "COMPETITION_AUTONOMOUS",
+    "COMPETITION_CONNECTED",
+    "COMPETITION_DISABLED",
     "INTERNAL_ADI_PORT",
     "PROS_ERR_",
     "PROS_ERR_F_",

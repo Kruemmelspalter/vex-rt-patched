@@ -367,7 +367,7 @@ impl Task {
         }
     }
 
-    #[allow(dead_code)] // TODO: Remove when used
+    #[inline]
     /// Notifies the task, incrementing the notification counter
     pub(crate) fn notify(&self) {
         unsafe {
@@ -375,6 +375,7 @@ impl Task {
         }
     }
 
+    #[inline]
     /// Waits for notifications on the current task, returning the number before
     /// decrement or clear. If clear is false will decrement notification
     /// number instead of setting to 0;
@@ -387,9 +388,11 @@ impl Task {
         }
     }
 
+    #[allow(dead_code)] // TODO: Remove when used
+    #[inline]
     /// Clears the notifications for this task returning true if there were
     /// notifications
-    pub fn clear_notifications(&self) -> bool {
+    pub(crate) fn clear_notifications(&self) -> bool {
         unsafe { bindings::task_notify_clear(self.0) }
     }
 }

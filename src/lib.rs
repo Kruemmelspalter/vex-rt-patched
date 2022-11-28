@@ -14,6 +14,7 @@ mod error;
 
 pub mod adi;
 pub mod battery;
+pub mod competition;
 pub mod controller;
 pub mod distance;
 pub mod imu;
