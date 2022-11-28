@@ -23,11 +23,14 @@ impl Robot for ChannelBot {
         .unwrap();
         Self { chan: receive }
     }
+
     fn opcontrol(&'static self, ctx: Context) {
         println!("opcontrol");
+        let mut l = Loop::new(Duration::from_millis(750));
         loop {
             select! {
                 x = self.chan.select() => println!("{}", x),
+                _ = l.select() => println!("tick"),
                 _ = ctx.done() => break,
             }
         }
