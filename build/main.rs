@@ -173,6 +173,8 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "task_notify",
     "task_notify_clear",
     "task_notify_take",
+    "task_resume",
+    "task_suspend",
 ];
 
 // Variables to be included by bindgen

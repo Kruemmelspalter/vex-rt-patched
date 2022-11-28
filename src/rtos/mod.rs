@@ -218,7 +218,7 @@ pub fn time_since_start() -> Instant {
     Instant::from_micros(unsafe { bindings::micros() })
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 /// Represents a FreeRTOS task.
 pub struct Task(bindings::task_t);
 
@@ -348,6 +348,23 @@ impl Task {
     /// resources are released).
     pub unsafe fn delete(&self) {
         bindings::task_delete(self.0)
+    }
+
+    #[inline]
+    /// Suspends execution of the task until [`resume`](Self::resume()) is
+    /// called.
+    pub fn suspend(&self) {
+        unsafe {
+            bindings::task_suspend(self.0);
+        }
+    }
+
+    #[inline]
+    /// Resumes execution of the task.
+    pub fn resume(&self) {
+        unsafe {
+            bindings::task_resume(self.0);
+        }
     }
 
     #[allow(dead_code)] // TODO: Remove when used
