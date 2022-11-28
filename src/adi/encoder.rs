@@ -4,7 +4,6 @@ use crate::bindings;
 use crate::error::{get_errno, Error};
 
 /// A struct which represents a V5 ADI port configured as an ADI encoder.
-#[derive(Debug)]
 pub struct AdiEncoder {
     port: bindings::ext_adi_encoder_t,
 }

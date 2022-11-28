@@ -2,11 +2,8 @@ use owner_monad::{Owner, OwnerMut};
 use raii_map::set::{insert, Set, SetHandle};
 
 use crate::{bindings, rtos::Task};
-use core::fmt;
-use core::fmt::{Debug, Formatter};
 
 /// Represents a self-maintaining set of tasks to notify when an event occurs.
-#[derive(Debug)]
 pub struct Event(Set<Task>);
 
 impl Event {
@@ -38,17 +35,7 @@ impl Default for Event {
 
 /// Represents a handle into the listing of the current task in an [`Event`].
 /// When this handle is dropped, that task is removed from the event's set.
-// TODO: Uncomment when `SetHandle` impls Debug
-// #[derive(Debug)]
 pub struct EventHandle<O: OwnerMut<Event>>(Option<SetHandle<Task, EventHandleOwner<O>>>);
-impl<O> Debug for EventHandle<O>
-where
-    O: OwnerMut<Event>,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("EventHandle").field(&"...").finish()
-    }
-}
 
 impl<O: OwnerMut<Event>> EventHandle<O> {
     /// Returns `true` if the event handle is orphaned, i.e. the parent event

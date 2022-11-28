@@ -13,7 +13,6 @@ use uom::si::{
 };
 
 /// A struct which represents a V5 smart port configured as a inertial sensor.
-#[derive(Debug)]
 pub struct InertialSensor {
     port: u8,
 }
@@ -341,7 +340,6 @@ pub struct InertialSensorRawAccel {
 }
 
 /// Represents a Quaternion returned from an inertial sensor.
-#[derive(Copy, Clone, Debug)]
 pub struct InertialSensorQuaternion {
     /// The x value of the Quaternion.
     pub x: f64,
@@ -354,7 +352,6 @@ pub struct InertialSensorQuaternion {
 }
 
 /// Represents the set of euler angles returned from an inertial sensor.
-#[derive(Copy, Clone, Debug)]
 pub struct InertialSensorEuler {
     /// The counterclockwise rotation on the y axis.
     pub pitch: Angle,
@@ -364,8 +361,8 @@ pub struct InertialSensorEuler {
     pub yaw: Angle,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 /// Indicates IMU status.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct InertialSensorStatus(bindings::imu_status_e);
 impl InertialSensorStatus {
     #[inline]

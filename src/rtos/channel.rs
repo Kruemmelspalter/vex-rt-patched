@@ -9,7 +9,6 @@ use super::{
 use crate::error::Error;
 
 /// Represents the sending end of a rendez-vous channel.
-#[derive(Debug)]
 pub struct SendChannel<T>(Arc<ChannelShared<T>>);
 
 impl<T> SendChannel<T> {
@@ -81,7 +80,6 @@ impl<T> Clone for SendChannel<T> {
 }
 
 /// Represents the receive end of a rendez-vous channel.
-#[derive(Debug)]
 pub struct ReceiveChannel<T>(Arc<ChannelShared<T>>);
 
 impl<T> ReceiveChannel<T> {
@@ -163,14 +161,12 @@ pub fn try_channel<T>() -> Result<(SendChannel<T>, ReceiveChannel<T>), Error> {
     Ok((send, receive))
 }
 
-#[derive(Debug)]
 struct ChannelShared<T> {
     data: Mutex<ChannelData<T>>,
     send_mutex: Mutex<()>,
     ack_sem: Semaphore,
 }
 
-#[derive(Debug)]
 struct ChannelData<T> {
     send_event: Event,
     receive_event: Event,

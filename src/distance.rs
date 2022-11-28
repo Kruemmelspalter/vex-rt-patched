@@ -12,7 +12,6 @@ use crate::{
 };
 
 /// A struct which represents a V5 smart port configured as a distance sensor.
-#[derive(Debug)]
 pub struct DistanceSensor {
     port: u8,
 }

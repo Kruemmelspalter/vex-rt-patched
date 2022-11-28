@@ -5,7 +5,6 @@ use crate::error::{get_errno, Error};
 use alloc::string::ToString;
 
 /// A struct which represents a V5 ADI port configured to be an ADI gyro.
-#[derive(Debug)]
 pub struct AdiGyro {
     port: bindings::ext_adi_gyro_t,
 }

@@ -21,7 +21,6 @@ use crate::{
 };
 
 /// A struct which represents a V5 smart port configured as a motor.
-#[derive(Debug)]
 pub struct Motor {
     port: u8,
 }
@@ -417,7 +416,6 @@ impl From<MotorError> for Error {
 }
 
 /// Represents possible brake modes for a motor.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BrakeMode {
     /// Motor coasts when stopped.
     Coast,
@@ -438,7 +436,6 @@ impl From<BrakeMode> for bindings::motor_brake_mode_e {
 }
 
 /// Represents possible gear cartridges for a motor.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Gearset {
     /// Blue 6:1 Gearset (600RPM).
     SixToOne,
@@ -459,7 +456,6 @@ impl From<Gearset> for bindings::motor_gearset_e {
 }
 
 /// Represents two possible directions of movement for a robot.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Direction {
     /// The positive direction.
     Positive,

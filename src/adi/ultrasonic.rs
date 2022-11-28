@@ -4,7 +4,6 @@ use crate::{
 };
 
 /// Represents a V5 ADI port pair configured as an ultrasonic sensor.
-#[derive(Debug)]
 pub struct AdiUltrasonic {
     port: bindings::ext_adi_ultrasonic_t,
 }

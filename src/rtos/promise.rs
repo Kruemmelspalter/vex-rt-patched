@@ -10,7 +10,6 @@ use super::{
 use crate::{error::Error, select};
 
 /// Represents an ongoing operation which produces a result.
-#[derive(Debug)]
 pub struct Promise<T: 'static = ()>(Arc<Mutex<PromiseData<T>>>);
 
 impl<T: 'static> Promise<T> {
@@ -62,7 +61,7 @@ impl<T: 'static> Promise<T> {
                     // the result is never modified once set. The reference is safe since it is
                     // defined to last only as long as the `Context` object, which has an `Arc`
                     // reference to the object containing the result.
-                    .map(|r| unsafe { &*r.get() })
+                    .map(|r| unsafe { &*UnsafeCell::<T>::raw_get(r) })
                     .ok_or(self)
             }
             #[inline]
@@ -145,7 +144,6 @@ impl<T: 'static> Clone for Promise<T> {
     }
 }
 
-#[derive(Debug)]
 enum PromiseData<T> {
     Incomplete(Event),
     Complete(UnsafeCell<T>),

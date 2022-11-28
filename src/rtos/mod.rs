@@ -367,6 +367,7 @@ impl Task {
         }
     }
 
+    #[allow(dead_code)] // TODO: Remove when used
     #[inline]
     /// Notifies the task, incrementing the notification counter
     pub(crate) fn notify(&self) {
@@ -375,6 +376,7 @@ impl Task {
         }
     }
 
+    #[allow(dead_code)] // TODO: Remove when used
     #[inline]
     /// Waits for notifications on the current task, returning the number before
     /// decrement or clear. If clear is false will decrement notification
@@ -410,8 +412,8 @@ unsafe impl Send for Task {}
 
 unsafe impl Sync for Task {}
 
+#[derive(Copy, Clone, Debug)]
 /// Represents the state of a [`Task`].
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TaskState {
     /// The task is actively executing.
     Running,
@@ -623,8 +625,6 @@ pub fn delay_until(timestamp: Instant) -> impl Selectable {
 
     DelaySelect(timestamp)
 }
-
-pub mod free_rtos;
 
 mod broadcast;
 mod channel;

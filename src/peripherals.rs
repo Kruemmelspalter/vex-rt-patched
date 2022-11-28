@@ -8,7 +8,6 @@ use crate::{
 };
 
 /// A struct which represents all the peripherals on the V5 brain.
-#[derive(Debug)]
 pub struct Peripherals {
     /// Primary Controller.
     pub master_controller: Controller,

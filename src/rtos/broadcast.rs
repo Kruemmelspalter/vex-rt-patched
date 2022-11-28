@@ -5,7 +5,6 @@ use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable};
 use crate::error::Error;
 
 /// Represents a source of data which notifies listeners on a new value.
-#[derive(Debug)]
 pub struct Broadcast<T: Clone>(Mutex<BroadcastData<T>>);
 
 impl<T: Clone> Broadcast<T> {
@@ -44,7 +43,6 @@ impl<T: Clone> Broadcast<T> {
 }
 
 /// Provides a means of listening to updates from a [`Broadcast`] event.
-#[derive(Debug)]
 pub struct BroadcastListener<'a, T: Clone> {
     data: Weak<T>,
     mtx: &'a Mutex<BroadcastData<T>>,
@@ -115,7 +113,6 @@ impl<T> OwnerMut<Event> for &Mutex<BroadcastData<T>> {
     }
 }
 
-#[derive(Debug)]
 struct BroadcastData<T> {
     data: Arc<T>,
     event: Event,

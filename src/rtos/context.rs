@@ -3,7 +3,7 @@ use alloc::{
     vec::Vec,
 };
 use by_address::ByAddress;
-use core::{cmp::min, fmt, time::Duration};
+use core::{cmp::min, time::Duration};
 use owner_monad::OwnerMut;
 use raii_map::set::{insert, Set, SetHandle};
 
@@ -11,7 +11,6 @@ use super::{
     handle_event, time_since_start, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable,
 };
 use crate::select_merge;
-use core::fmt::{Debug, Formatter};
 
 type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
 
@@ -33,7 +32,6 @@ type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
 ///
 /// A context can be "forked", which creates a new child context. This new
 /// context can optionally be created with a deadline.
-#[derive(Debug)]
 pub struct Context(Arc<ContextValue>);
 
 impl Context {
@@ -170,15 +168,6 @@ struct ContextData {
     event: Event,
     children: Set<ByAddress<Arc<ContextValue>>>,
 }
-impl Debug for ContextData {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ContextData")
-            .field("_parent", &"...")
-            .field("event", &self.event)
-            .field("children", &self.children)
-            .finish()
-    }
-}
 
 impl Drop for ContextData {
     fn drop(&mut self) {
@@ -225,7 +214,6 @@ fn cancel(m: &Mutex<Option<ContextData>>) {
 
 /// Provides a wrapper for [`Context`] objects which permits the management of
 /// sequential, non-overlapping contexts.
-#[derive(Debug)]
 pub struct ContextWrapper(Option<Context>);
 
 impl ContextWrapper {

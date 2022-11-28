@@ -16,7 +16,6 @@ const SCREEN_SUCCESS_DELAY: Duration = Duration::from_millis(50);
 const SCREEN_FAILURE_DELAY: Duration = Duration::from_millis(5);
 
 /// Represents a Vex controller.
-#[derive(Debug)]
 pub struct Controller {
     id: bindings::controller_id_e_t,
     /// The left analog stick.
@@ -152,7 +151,6 @@ impl Controller {
 }
 
 /// Represents one of two analog sticks on a Vex controller.
-#[derive(Debug)]
 pub struct AnalogStick {
     id: bindings::controller_id_e_t,
     x_channel: bindings::controller_analog_e_t,
@@ -191,7 +189,6 @@ impl AnalogStick {
 }
 
 /// Represents a button on a Vex controller.
-#[derive(Debug)]
 pub struct Button {
     id: bindings::controller_id_e_t,
     button: bindings::controller_digital_e_t,
@@ -463,7 +460,6 @@ enum ScreenCommand {
 }
 
 /// Represents the two types of controller.
-#[derive(Copy, Clone, Debug)]
 pub enum ControllerId {
     /// The primary controller.
     Master,
