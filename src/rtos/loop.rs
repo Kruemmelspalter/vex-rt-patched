@@ -52,7 +52,9 @@ impl Loop {
         struct LoopSelect<'a>(&'a mut Loop);
 
         impl<'a> Selectable for LoopSelect<'a> {
-            fn poll(self) -> Result<(), Self> {
+            type Output = ();
+
+            fn poll(self) -> Result<Self::Output, Self> {
                 if time_since_start() >= self.0.next {
                     self.0.next += self.0.delta;
                     self.0.cycle += 1;
@@ -61,6 +63,7 @@ impl Loop {
                     Err(self)
                 }
             }
+
             fn sleep(&self) -> GenericSleep {
                 GenericSleep::Timestamp(self.0.next)
             }

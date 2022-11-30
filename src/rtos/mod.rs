@@ -226,6 +226,9 @@ impl Task {
     /// The default priority for new tasks.
     pub const DEFAULT_PRIORITY: u32 = bindings::TASK_PRIORITY_DEFAULT;
 
+    /// The maximum priority for tasks.
+    pub const MAX_PRIORITY: u32 = bindings::TASK_PRIORITY_MAX;
+
     /// The default stack depth for new tasks.
     pub const DEFAULT_STACK_DEPTH: u16 = bindings::TASK_STACK_DEPTH_DEFAULT as u16;
 
@@ -435,6 +438,10 @@ pub enum GenericSleep {
     NotifyTake(Option<Instant>),
     /// Represents an explicit future timestamp.
     Timestamp(Instant),
+    /// Represents a time that is now or in the past.
+    Ready,
+    /// Represents a time at infinity.
+    Never,
 }
 
 impl GenericSleep {
@@ -456,6 +463,8 @@ impl GenericSleep {
                 }
                 0
             }
+            GenericSleep::Ready => 0,
+            GenericSleep::Never => panic!("attempted to sleep forever"),
         }
     }
 
@@ -465,6 +474,7 @@ impl GenericSleep {
         match self {
             GenericSleep::NotifyTake(v) => v,
             GenericSleep::Timestamp(v) => Some(v),
+            _ => None,
         }
     }
 
@@ -472,8 +482,12 @@ impl GenericSleep {
     /// possible time of the two.
     pub fn combine(self, other: Self) -> Self {
         match (self, other) {
+            (_, GenericSleep::Ready) => GenericSleep::Ready,
+            (GenericSleep::Ready, _) => GenericSleep::Ready,
+            (a, GenericSleep::Never) => a,
+            (GenericSleep::Never, b) => b,
             (GenericSleep::Timestamp(a), GenericSleep::Timestamp(b)) => {
-                GenericSleep::Timestamp(core::cmp::min(a, b))
+                GenericSleep::Timestamp(min(a, b))
             }
             (a, b) => GenericSleep::NotifyTake(
                 a.timeout()
@@ -485,10 +499,14 @@ impl GenericSleep {
 
 /// Represents a future event which can be used with the
 /// [`select!`](crate::select!) macro.
-pub trait Selectable<T = ()>: Sized {
+pub trait Selectable: Sized {
+    /// The type of the event result.
+    type Output;
+
     /// Processes the event if it is ready, consuming the event object;
     /// otherwise, it provides a replacement event object.
-    fn poll(self) -> Result<T, Self>;
+    fn poll(self) -> Result<Self::Output, Self>;
+
     /// Gets the earliest time that the event could be ready.
     fn sleep(&self) -> GenericSleep;
 }
@@ -496,17 +514,19 @@ pub trait Selectable<T = ()>: Sized {
 #[inline]
 /// Creates a new [`Selectable`] event by mapping the result of a given one.
 pub fn select_map<'a, T: 'a, U: 'a>(
-    event: impl Selectable<T> + 'a,
+    event: impl Selectable<Output = T> + 'a,
     f: impl 'a + FnOnce(T) -> U,
-) -> impl Selectable<U> + 'a {
-    struct MapSelect<T, U, E: Selectable<T>, F: FnOnce(T) -> U> {
+) -> impl Selectable<Output = U> + 'a {
+    struct MapSelect<U, E: Selectable, F: FnOnce(E::Output) -> U> {
         event: E,
         f: F,
-        _t: PhantomData<T>,
+        _t: PhantomData<E::Output>,
     }
 
-    impl<T, U, E: Selectable<T>, F: FnOnce(T) -> U> Selectable<U> for MapSelect<T, U, E, F> {
-        fn poll(self) -> Result<U, Self> {
+    impl<U, E: Selectable, F: FnOnce(E::Output) -> U> Selectable for MapSelect<U, E, F> {
+        type Output = U;
+
+        fn poll(self) -> Result<Self::Output, Self> {
             match self.event.poll() {
                 Ok(r) => Ok((self.f)(r)),
                 Err(event) => Err(Self { event, ..self }),
@@ -528,13 +548,21 @@ pub fn select_map<'a, T: 'a, U: 'a>(
 /// Creates a new [`Selectable`] event which processes exactly one of the given
 /// events.
 pub fn select_either<'a, T: 'a>(
-    fst: impl Selectable<T> + 'a,
-    snd: impl Selectable<T> + 'a,
-) -> impl Selectable<T> + 'a {
-    struct EitherSelect<T, E1: Selectable<T>, E2: Selectable<T>>(E1, E2, PhantomData<T>);
+    fst: impl Selectable<Output = T> + 'a,
+    snd: impl Selectable<Output = T> + 'a,
+) -> impl Selectable<Output = T> + 'a {
+    struct EitherSelect<T, E1: Selectable<Output = T>, E2: Selectable<Output = T>>(
+        E1,
+        E2,
+        PhantomData<T>,
+    );
 
-    impl<T, E1: Selectable<T>, E2: Selectable<T>> Selectable<T> for EitherSelect<T, E1, E2> {
-        fn poll(self) -> Result<T, Self> {
+    impl<T, E1: Selectable<Output = T>, E2: Selectable<Output = T>> Selectable
+        for EitherSelect<T, E1, E2>
+    {
+        type Output = T;
+
+        fn poll(self) -> Result<Self::Output, Self> {
             Err(Self(
                 match self.0.poll() {
                     Ok(r) => return Ok(r),
@@ -558,11 +586,15 @@ pub fn select_either<'a, T: 'a>(
 #[inline]
 /// Creates a new [`Selectable`] event which never completes if the given base
 /// event is None.
-pub fn select_option<'a, T: 'a>(base: Option<impl Selectable<T> + 'a>) -> impl Selectable<T> + 'a {
-    struct OptionSelect<T, E: Selectable<T>>(Option<E>, PhantomData<T>);
+pub fn select_option<'a, T: 'a>(
+    base: Option<impl Selectable<Output = T> + 'a>,
+) -> impl Selectable<Output = T> + 'a {
+    struct OptionSelect<E: Selectable>(Option<E>, PhantomData<E::Output>);
 
-    impl<T, E: Selectable<T>> Selectable<T> for OptionSelect<T, E> {
-        fn poll(self) -> Result<T, Self> {
+    impl<E: Selectable> Selectable for OptionSelect<E> {
+        type Output = E::Output;
+
+        fn poll(self) -> Result<Self::Output, Self> {
             Err(Self(
                 if let Some(e) = self.0 {
                     match e.poll() {
@@ -588,7 +620,7 @@ pub fn select_option<'a, T: 'a>(base: Option<impl Selectable<T> + 'a>) -> impl S
 
 #[inline]
 /// Awaits a [`Selectable`] event.
-pub fn select<'a, T: 'a>(mut event: impl Selectable<T> + 'a) -> T {
+pub fn select<'a, T: 'a>(mut event: impl Selectable<Output = T> + 'a) -> T {
     loop {
         event.sleep().sleep();
         event = match event.poll() {
@@ -611,13 +643,16 @@ pub fn delay_until(timestamp: Instant) -> impl Selectable {
     struct DelaySelect(Instant);
 
     impl Selectable for DelaySelect {
-        fn poll(self) -> Result<(), Self> {
+        type Output = ();
+
+        fn poll(self) -> Result<Self::Output, Self> {
             if time_since_start() >= self.0 {
                 Ok(())
             } else {
                 Err(self)
             }
         }
+
         fn sleep(&self) -> GenericSleep {
             GenericSleep::Timestamp(self.0)
         }
