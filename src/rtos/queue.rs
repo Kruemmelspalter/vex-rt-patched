@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 use owner_monad::OwnerMut;
 use queue_model::QueueModel;
 
-use super::{handle_event, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable};
+use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable};
 use crate::error::Error;
 
 /// Represents the sending end of a message-passing queue.
@@ -28,14 +28,16 @@ pub struct ReceiveQueue<T>(Arc<dyn QueueShared<T> + Send + Sync>);
 impl<T> ReceiveQueue<T> {
     /// A [`Selectable`] event which resolves when a value is received on the
     /// message-passing queue.
-    pub fn select(&self) -> impl '_ + Selectable<T> {
+    pub fn select(&self) -> impl '_ + Selectable<Output = T> {
         struct ReceiveSelect<'b, T> {
             data: &'b dyn QueueShared<T>,
             _handle: EventHandle<ReceiveWrapper<'b, T>>,
         }
 
-        impl<'b, T> Selectable<T> for ReceiveSelect<'b, T> {
-            fn poll(self) -> Result<T, Self> {
+        impl<'b, T> Selectable for ReceiveSelect<'b, T> {
+            type Output = T;
+
+            fn poll(self) -> Result<Self::Output, Self> {
                 self.data.receive().ok_or(self)
             }
 
@@ -43,7 +45,7 @@ impl<T> ReceiveQueue<T> {
                 if self.data.is_empty() {
                     GenericSleep::NotifyTake(None)
                 } else {
-                    GenericSleep::Timestamp(Instant::from_millis(0))
+                    GenericSleep::Ready
                 }
             }
         }
@@ -68,6 +70,7 @@ pub type QueuePair<Q> = (
     ReceiveQueue<<Q as QueueModel>::Item>,
 );
 
+#[inline]
 /// Creates a new send-receive pair together representing a message-passing
 /// queue, based on the given underlying queue structure. Panics on failure; see
 /// [`try_queue`].

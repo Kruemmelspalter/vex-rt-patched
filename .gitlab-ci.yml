@@ -14,14 +14,14 @@ build:
   stage: build
   variables:
     RUSTFLAGS: -D warnings
-    RUSTDOCFLAGS: -D warnings
+    RUSTDOCFLAGS: -D warnings --cfg docsrs
   script:
     - cargo fmt -- --check
-    - cargo build
-    - cargo build --examples
-    - cargo clippy -- -D warnings
-    - cargo clippy --examples -- -D warnings
-    - cargo doc
+    - cargo build --all-features
+    - cargo build --examples --all-features
+    - cargo clippy --all-features -- -D warnings
+    - cargo clippy --examples --all-features -- -D warnings
+    - cargo doc --all-features
   cache:
     paths:
       - .cargo

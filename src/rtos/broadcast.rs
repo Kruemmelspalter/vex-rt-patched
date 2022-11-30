@@ -63,15 +63,17 @@ impl<'a, T: Clone> BroadcastListener<'a, T> {
     #[inline]
     /// A [`Selectable`] event which occurs when new data is published to the
     /// underlying [`Broadcast`] event.
-    pub fn select(&'_ mut self) -> impl Selectable<T> + '_ {
+    pub fn select(&'_ mut self) -> impl Selectable<Output = T> + '_ {
         struct BroadcastSelect<'b, T: Clone> {
             data: &'b mut Weak<T>,
             handle: EventHandle<&'b Mutex<BroadcastData<T>>>,
         }
 
-        impl<'b, T: Clone> Selectable<T> for BroadcastSelect<'b, T> {
+        impl<'b, T: Clone> Selectable for BroadcastSelect<'b, T> {
+            type Output = T;
+
             #[inline]
-            fn poll(mut self) -> Result<T, Self> {
+            fn poll(mut self) -> Result<Self::Output, Self> {
                 let data = &mut self.data;
                 self.handle
                     .with(|mtx| BroadcastListener::next_value_impl(data, mtx))

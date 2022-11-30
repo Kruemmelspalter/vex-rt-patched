@@ -44,14 +44,16 @@ impl<T: 'static> Promise<T> {
     }
 
     /// A [`Selectable`] event which occurs when the promise is resolved.
-    pub fn done(&'_ self) -> impl Selectable<&'_ T> + '_ {
+    pub fn done(&'_ self) -> impl Selectable<Output = &'_ T> + '_ {
         struct PromiseSelect<'a, T: 'static> {
             promise: &'a Promise<T>,
             handle: EventHandle<PromiseHandle<T>>,
         }
 
-        impl<'a, T> Selectable<&'a T> for PromiseSelect<'a, T> {
-            fn poll(self) -> Result<&'a T, Self> {
+        impl<'a, T> Selectable for PromiseSelect<'a, T> {
+            type Output = &'a T;
+
+            fn poll(self) -> Result<Self::Output, Self> {
                 self.promise
                     .0
                     .lock()
@@ -64,6 +66,7 @@ impl<T: 'static> Promise<T> {
                     .map(|r| unsafe { &*UnsafeCell::<T>::raw_get(r) })
                     .ok_or(self)
             }
+
             #[inline]
             fn sleep(&self) -> GenericSleep {
                 if self.handle.is_done() {

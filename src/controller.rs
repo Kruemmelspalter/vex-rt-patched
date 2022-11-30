@@ -7,9 +7,12 @@ use crate::{
     bindings,
     error::{get_errno, Error},
     io::eprintln,
-    rtos::{channel, delay_until, time_since_start, SendChannel, Task},
+    rtos::{channel, delay_until, time_since_start, Context, SendChannel, Task},
     select,
 };
+
+#[cfg(feature = "async-await")]
+use crate::async_await::ExecutionContext;
 
 const SCREEN_SUCCESS_DELAY: Duration = Duration::from_millis(50);
 const SCREEN_FAILURE_DELAY: Duration = Duration::from_millis(5);
@@ -119,7 +122,7 @@ impl Controller {
                 id,
                 button: bindings::controller_digital_e_t_E_CONTROLLER_DIGITAL_A,
             },
-            screen: Screen { id, queue: None },
+            screen: Screen { id, chan: None },
         }
     }
 
@@ -208,17 +211,24 @@ impl Button {
 /// Represents the screen on a Vex controller
 pub struct Screen {
     id: bindings::controller_id_e_t,
-    queue: Option<SendChannel<ScreenCommand>>,
+    chan: Option<(Context, SendChannel<ScreenCommand>)>,
 }
 
 impl Screen {
-    /// Clears all of the lines of the controller screen
+    /// Clears all of the lines of the controller screen.
     pub fn clear(&mut self) {
         self.command(ScreenCommand::Clear);
     }
 
+    #[cfg(feature = "async-await")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
+    /// Clears all of the lines of the controller screen.
+    pub async fn clear_async<'a>(&'a mut self, ec: ExecutionContext<'a>) {
+        self.command_async(ScreenCommand::Clear, ec).await;
+    }
+
     /// Clears an individual line of the controller screen. Lines range from 0
-    /// to 2
+    /// to 2.
     pub fn clear_line(&mut self, line: u8) {
         if line > 2 {
             return;
@@ -226,20 +236,39 @@ impl Screen {
         self.command(ScreenCommand::ClearLine(line));
     }
 
-    /// Prints text to the controller LCD screen. Lines range from 0 to 2.
-    /// Columns range from 0 to 18
-    pub fn print(&mut self, line: u8, column: u8, str: &str) {
-        if line > 2 || column > 18 {
+    #[cfg(feature = "async-await")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
+    /// Clears an individual line of the controller screen. Lines range from 0
+    /// to 2.
+    pub async fn clear_line_async<'a>(&'a mut self, line: u8, ec: ExecutionContext<'a>) {
+        if line > 2 {
             return;
         }
-        let mut chars: [libc::c_char; 19] = Default::default();
-        copy(&mut chars, str.as_bytes());
-        self.command(ScreenCommand::Print {
-            chars,
-            line,
-            column,
-            length: str.as_bytes().len() as u8,
-        });
+        self.command_async(ScreenCommand::ClearLine(line), ec).await;
+    }
+
+    /// Prints text to the controller LCD screen. Lines range from 0 to 2.
+    /// Columns range from 0 to 18.
+    pub fn print(&mut self, line: u8, column: u8, str: &str) {
+        if let Some(cmd) = Self::print_command(line, column, str) {
+            self.command(cmd);
+        }
+    }
+
+    #[cfg(feature = "async-await")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
+    /// Prints text to the controller LCD screen. Lines range from 0 to 2.
+    /// Columns range from 0 to 18.
+    pub async fn print_async<'a>(
+        &'a mut self,
+        line: u8,
+        column: u8,
+        str: &str,
+        ec: ExecutionContext<'a>,
+    ) {
+        if let Some(cmd) = Self::print_command(line, column, str) {
+            self.command_async(cmd, ec).await;
+        }
     }
 
     /// Rumble the controller. Rumble pattern is a string consisting of the
@@ -247,6 +276,35 @@ impl Screen {
     /// long rumbles, and spaces are pauses; all other characters are ignored.
     /// Maximum supported length is 8 characters.
     pub fn rumble(&mut self, rumble_pattern: &str) {
+        self.command(Self::rumble_command(rumble_pattern));
+    }
+
+    #[cfg(feature = "async-await")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
+    /// Rumble the controller. Rumble pattern is a string consisting of the
+    /// characters ‘.’, ‘-’, and ‘ ‘, where dots are short rumbles, dashes are
+    /// long rumbles, and spaces are pauses; all other characters are ignored.
+    /// Maximum supported length is 8 characters.
+    pub async fn rumble_async<'a>(&'a mut self, rumble_pattern: &str, ec: ExecutionContext<'a>) {
+        self.command_async(Self::rumble_command(rumble_pattern), ec)
+            .await;
+    }
+
+    fn print_command(line: u8, column: u8, str: &str) -> Option<ScreenCommand> {
+        if line > 2 || column > 18 {
+            return None;
+        }
+        let mut chars: [libc::c_char; 19] = Default::default();
+        copy(&mut chars, str.as_bytes());
+        Some(ScreenCommand::Print {
+            chars,
+            line,
+            column,
+            length: str.as_bytes().len() as u8,
+        })
+    }
+
+    fn rumble_command(rumble_pattern: &str) -> ScreenCommand {
         let mut pattern: [libc::c_char; 8] = Default::default();
         let mut i = 0;
         for c in rumble_pattern.chars() {
@@ -261,148 +319,165 @@ impl Screen {
                 break;
             }
         }
-        self.command(ScreenCommand::Rumble(pattern));
+
+        ScreenCommand::Rumble(pattern)
     }
 
     fn command(&mut self, cmd: ScreenCommand) {
         select! {
-            _ = self.queue().select(cmd) => {}
+            _ = self.chan().select(cmd) => {}
         }
     }
 
-    fn queue(&mut self) -> &mut SendChannel<ScreenCommand> {
-        self.queue.get_or_insert_with(|| {
-            let name = match self.id {
-                bindings::controller_id_e_t_E_CONTROLLER_MASTER => "controller-screen-master",
-                bindings::controller_id_e_t_E_CONTROLLER_PARTNER => "controller-screen-partner",
-                _ => "",
-            };
-            let id = self.id;
-            let (send, recv) = channel();
-            Task::spawn_ext(
-                name,
-                bindings::TASK_PRIORITY_MAX,
-                bindings::TASK_STACK_DEPTH_DEFAULT as u16,
-                move || {
-                    let mut delay_target = None;
-                    let mut offset = 0usize;
-                    let mut clear = false;
-                    let mut buffer = [ScreenRow::default(); 3];
-                    let mut rumble: Option<[libc::c_char; 9]> = None;
-                    'main: loop {
-                        let command: Option<ScreenCommand> = select! {
-                            cmd = recv.select() => Some(cmd),
-                            _ = delay_until(t); Some(t) = delay_target => None,
-                        };
-                        if let Some(cmd) = command {
-                            match cmd {
-                                ScreenCommand::Clear => {
-                                    offset = 0;
-                                    clear = true;
-                                    buffer = Default::default();
+    #[cfg(feature = "async-await")]
+    async fn command_async<'a>(&'a mut self, cmd: ScreenCommand, ec: ExecutionContext<'a>) {
+        ec.proxy(self.chan().select(cmd)).await
+    }
+
+    fn chan(&mut self) -> &mut SendChannel<ScreenCommand> {
+        &mut self
+            .chan
+            .get_or_insert_with(|| {
+                let name = match self.id {
+                    bindings::controller_id_e_t_E_CONTROLLER_MASTER => "controller-screen-master",
+                    bindings::controller_id_e_t_E_CONTROLLER_PARTNER => "controller-screen-partner",
+                    _ => "",
+                };
+                let id = self.id;
+                let (send, recv) = channel();
+                let ctx = Context::new_global();
+                let ctx_cloned = ctx.clone();
+
+                Task::spawn_ext(
+                    name,
+                    bindings::TASK_PRIORITY_MAX,
+                    bindings::TASK_STACK_DEPTH_DEFAULT as u16,
+                    move || {
+                        let mut delay_target = None;
+                        let mut offset = 0usize;
+                        let mut clear = false;
+                        let mut buffer = [ScreenRow::default(); 3];
+                        let mut rumble: Option<[libc::c_char; 9]> = None;
+                        'main: loop {
+                            let command: Option<ScreenCommand> = select! {
+                                _ = ctx_cloned.done() => break,
+                                cmd = recv.select() => Some(cmd),
+                                _ = delay_until(t); Some(t) = delay_target => None,
+                            };
+                            if let Some(cmd) = command {
+                                match cmd {
+                                    ScreenCommand::Clear => {
+                                        offset = 0;
+                                        clear = true;
+                                        buffer = Default::default();
+                                    }
+                                    ScreenCommand::ClearLine(line) => {
+                                        let row = &mut buffer[line as usize];
+                                        *row = ScreenRow::default();
+                                        row.needs_clear = true;
+                                    }
+                                    ScreenCommand::Print {
+                                        chars,
+                                        line,
+                                        column,
+                                        length,
+                                    } => {
+                                        let row = &mut buffer[line as usize];
+                                        copy(
+                                            &mut row.chars[column as usize..],
+                                            &chars[..length as usize],
+                                        );
+                                        row.dirty = true;
+                                    }
+                                    ScreenCommand::Rumble(pattern) => {
+                                        let mut buf: [libc::c_char; 9] = Default::default();
+                                        copy(&mut buf, &pattern);
+                                        rumble = Some(buf);
+                                    }
                                 }
-                                ScreenCommand::ClearLine(line) => {
-                                    let row = &mut buffer[line as usize];
-                                    *row = ScreenRow::default();
-                                    row.needs_clear = true;
+                            }
+                            if let Some(pattern) = rumble {
+                                match unsafe { bindings::controller_rumble(id, pattern.as_ptr()) } {
+                                    1 => {
+                                        delay_target =
+                                            Some(time_since_start() + SCREEN_SUCCESS_DELAY);
+                                        rumble = None;
+                                    }
+                                    _ => {
+                                        delay_target =
+                                            Some(time_since_start() + SCREEN_FAILURE_DELAY);
+                                        Self::print_error()
+                                    }
                                 }
-                                ScreenCommand::Print {
-                                    chars,
-                                    line,
-                                    column,
-                                    length,
-                                } => {
-                                    let row = &mut buffer[line as usize];
-                                    copy(
-                                        &mut row.chars[column as usize..],
-                                        &chars[..length as usize],
-                                    );
-                                    row.dirty = true;
+                            } else if clear {
+                                match unsafe { bindings::controller_clear(id) } {
+                                    1 => {
+                                        delay_target =
+                                            Some(time_since_start() + SCREEN_SUCCESS_DELAY);
+                                        clear = false;
+                                    }
+                                    _ => {
+                                        delay_target =
+                                            Some(time_since_start() + SCREEN_FAILURE_DELAY);
+                                        Self::print_error()
+                                    }
                                 }
-                                ScreenCommand::Rumble(pattern) => {
-                                    let mut buf: [libc::c_char; 9] = Default::default();
-                                    copy(&mut buf, &pattern);
-                                    rumble = Some(buf);
+                            } else {
+                                for i in 0..3 {
+                                    let index = (offset + i) % buffer.len();
+                                    let row = &mut buffer[index];
+                                    if row.needs_clear {
+                                        match unsafe {
+                                            bindings::controller_clear_line(id, index as u8)
+                                        } {
+                                            1 => {
+                                                delay_target =
+                                                    Some(time_since_start() + SCREEN_SUCCESS_DELAY);
+                                                row.needs_clear = false;
+                                            }
+                                            _ => {
+                                                delay_target =
+                                                    Some(time_since_start() + SCREEN_FAILURE_DELAY);
+                                                Self::print_error()
+                                            }
+                                        }
+                                    } else if row.dirty {
+                                        match unsafe {
+                                            bindings::controller_set_text(
+                                                id,
+                                                index as u8,
+                                                0,
+                                                row.chars.as_ptr(),
+                                            )
+                                        } {
+                                            1 => {
+                                                delay_target =
+                                                    Some(time_since_start() + SCREEN_SUCCESS_DELAY);
+                                                row.dirty = false;
+                                            }
+                                            _ => {
+                                                delay_target =
+                                                    Some(time_since_start() + SCREEN_FAILURE_DELAY);
+                                                Self::print_error()
+                                            }
+                                        }
+                                    } else {
+                                        continue;
+                                    }
+                                    offset = i + 1;
+                                    continue 'main;
                                 }
-                                ScreenCommand::Stop => break,
+                                // No updates were made; delay indefinitely until next command.
+                                delay_target = None;
                             }
                         }
-                        if let Some(pattern) = rumble {
-                            match unsafe { bindings::controller_rumble(id, pattern.as_ptr()) } {
-                                1 => {
-                                    delay_target = Some(time_since_start() + SCREEN_SUCCESS_DELAY);
-                                    rumble = None;
-                                }
-                                _ => {
-                                    delay_target = Some(time_since_start() + SCREEN_FAILURE_DELAY);
-                                    Self::print_error()
-                                }
-                            }
-                        } else if clear {
-                            match unsafe { bindings::controller_clear(id) } {
-                                1 => {
-                                    delay_target = Some(time_since_start() + SCREEN_SUCCESS_DELAY);
-                                    clear = false;
-                                }
-                                _ => {
-                                    delay_target = Some(time_since_start() + SCREEN_FAILURE_DELAY);
-                                    Self::print_error()
-                                }
-                            }
-                        } else {
-                            for i in 0..3 {
-                                let index = (offset + i) % buffer.len();
-                                let row = &mut buffer[index];
-                                if row.needs_clear {
-                                    match unsafe {
-                                        bindings::controller_clear_line(id, index as u8)
-                                    } {
-                                        1 => {
-                                            delay_target =
-                                                Some(time_since_start() + SCREEN_SUCCESS_DELAY);
-                                            row.needs_clear = false;
-                                        }
-                                        _ => {
-                                            delay_target =
-                                                Some(time_since_start() + SCREEN_FAILURE_DELAY);
-                                            Self::print_error()
-                                        }
-                                    }
-                                } else if row.dirty {
-                                    match unsafe {
-                                        bindings::controller_set_text(
-                                            id,
-                                            index as u8,
-                                            0,
-                                            row.chars.as_ptr(),
-                                        )
-                                    } {
-                                        1 => {
-                                            delay_target =
-                                                Some(time_since_start() + SCREEN_SUCCESS_DELAY);
-                                            row.dirty = false;
-                                        }
-                                        _ => {
-                                            delay_target =
-                                                Some(time_since_start() + SCREEN_FAILURE_DELAY);
-                                            Self::print_error()
-                                        }
-                                    }
-                                } else {
-                                    continue;
-                                }
-                                offset = i + 1;
-                                continue 'main;
-                            }
-                            // No updates were made; delay indefinitely until next command.
-                            delay_target = None;
-                        }
-                    }
-                },
-            )
-            .unwrap();
-            send
-        })
+                    },
+                )
+                .unwrap();
+
+                (ctx, send)
+            })
+            .1
     }
 
     fn print_error() {
@@ -414,8 +489,8 @@ impl Screen {
 
 impl Drop for Screen {
     fn drop(&mut self) {
-        if self.queue.is_some() {
-            self.command(ScreenCommand::Stop);
+        if let Some((ctx, _)) = self.chan.as_ref() {
+            ctx.cancel();
         }
     }
 }
@@ -457,7 +532,6 @@ enum ScreenCommand {
         length: u8,
     },
     Rumble([libc::c_char; 8]),
-    Stop,
 }
 
 /// Represents the two types of controller.

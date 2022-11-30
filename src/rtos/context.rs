@@ -55,6 +55,8 @@ impl Context {
         struct ContextSelect<'a>(&'a Context, EventHandle<ContextHandle>);
 
         impl<'a> Selectable for ContextSelect<'a> {
+            type Output = ();
+
             fn poll(self) -> Result<(), Self> {
                 let mut lock = self.0 .0 .1.lock();
                 let opt = &mut lock.as_mut();
@@ -69,6 +71,7 @@ impl Context {
                     Ok(())
                 }
             }
+
             fn sleep(&self) -> GenericSleep {
                 GenericSleep::NotifyTake(self.0 .0 .0)
             }
@@ -82,8 +85,8 @@ impl Context {
     /// first.
     pub fn wrap<'a, T: 'a>(
         &'a self,
-        event: impl Selectable<T> + 'a,
-    ) -> impl Selectable<Option<T>> + 'a {
+        event: impl Selectable<Output = T> + 'a,
+    ) -> impl Selectable<Output = Option<T>> + 'a {
         select_merge! {
             r = event => Some(r),
             _ = self.done() => None,

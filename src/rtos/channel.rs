@@ -1,10 +1,9 @@
 use alloc::sync::Arc;
-use core::time::Duration;
+use core::{result::Result, time::Duration};
 use owner_monad::OwnerMut;
 
 use super::{
-    handle_event, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable, Semaphore,
-    TIMEOUT_MAX,
+    handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable, Semaphore, TIMEOUT_MAX,
 };
 use crate::error::Error;
 
@@ -16,7 +15,7 @@ impl<T> SendChannel<T> {
     /// channel. Respects the atomicity and rendez-vous properties of the
     /// operation; if the event occurs and is processed, then the value was
     /// sent, and otherwise not.
-    pub fn select(&self, value: T) -> impl '_ + Selectable {
+    pub fn select(&self, value: T) -> impl '_ + Selectable<Output = ()> {
         struct SendSelect<'b, T> {
             value: T,
             data: &'b ChannelShared<T>,
@@ -24,7 +23,9 @@ impl<T> SendChannel<T> {
         }
 
         impl<'b, T> Selectable for SendSelect<'b, T> {
-            fn poll(self) -> Result<(), Self> {
+            type Output = ();
+
+            fn poll(self) -> Result<Self::Output, Self> {
                 // Send mutex is locked for the duration of the poll operation.
                 let _send_lock = self.data.send_mutex.lock();
 
@@ -63,7 +64,7 @@ impl<T> SendChannel<T> {
                 if self.data.data.lock().receive_event.task_count() == 0 {
                     GenericSleep::NotifyTake(None)
                 } else {
-                    GenericSleep::Timestamp(Instant::from_millis(0))
+                    GenericSleep::Ready
                 }
             }
         }
@@ -88,15 +89,17 @@ pub struct ReceiveChannel<T>(Arc<ChannelShared<T>>);
 impl<T> ReceiveChannel<T> {
     /// A [`Selectable`] event which resolves when a value is received on the
     /// channel.
-    pub fn select(&self) -> impl '_ + Selectable<T> {
+    pub fn select(&self) -> impl '_ + Selectable<Output = T> {
         struct ReceiveSelect<'b, T> {
             data: &'b ChannelShared<T>,
             handle: EventHandle<ReceiveWrapper<'b, T>>,
             seq: bool,
         }
 
-        impl<'b, T> Selectable<T> for ReceiveSelect<'b, T> {
-            fn poll(mut self) -> core::result::Result<T, Self> {
+        impl<'b, T> Selectable for ReceiveSelect<'b, T> {
+            type Output = T;
+
+            fn poll(mut self) -> Result<Self::Output, Self> {
                 let mut lock = self.data.data.lock();
 
                 if self.seq != lock.seq {
@@ -114,12 +117,9 @@ impl<T> ReceiveChannel<T> {
                 }
             }
 
+            #[inline]
             fn sleep(&self) -> GenericSleep {
-                if self.data.data.lock().send_event.task_count() == 0 {
-                    GenericSleep::NotifyTake(None)
-                } else {
-                    GenericSleep::Timestamp(Instant::from_millis(0))
-                }
+                GenericSleep::NotifyTake(None)
             }
         }
 
