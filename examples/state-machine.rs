@@ -47,7 +47,11 @@ impl DriveTrain {
 make_state_machine! {
     /// Test
     pub Drive(drive: DriveTrain) {
-        drive: DriveTrain = drive
+        drive: DriveTrain = drive;
+    } = idle();
+
+    idle(ctx) [drive] {
+        drive.drive(0, 0).unwrap();
     }
 }
 
