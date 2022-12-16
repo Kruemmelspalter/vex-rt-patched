@@ -23,12 +23,14 @@ impl Motor {
         gearset: Gearset,
         encoder_units: EncoderUnits,
         reverse: bool,
-    ) -> Motor {
-        let mut motor = Motor { port };
-        motor.set_reversed(reverse).unwrap();
-        motor.set_gearing(gearset).unwrap();
-        motor.set_encoder_units(encoder_units).unwrap();
-        motor
+    ) -> Result<Self, MotorError> {
+        let mut motor = Self { port };
+        motor.set_reversed(reverse)?;
+        motor.set_gearing(gearset)?;
+        match unsafe { bindings::motor_set_encoder_units(port, encoder_units.into()) } {
+            bindings::PROS_ERR_ => Err(MotorError::from_errno()),
+            _ => Ok(motor),
+        }
     }
 
     /// Sets the voltage for the motor from -127 to 127.

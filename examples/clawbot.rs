@@ -94,21 +94,22 @@ impl Robot for Bot {
             drivetrain: Mutex::new(DriveTrain {
                 left: p
                     .port01
-                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false),
+                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false)
+                    .unwrap(),
                 right: p
                     .port10
-                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true),
+                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true)
+                    .unwrap(),
             }),
-            arm: Mutex::new(Arm(p.port08.into_motor(
-                Gearset::EighteenToOne,
-                EncoderUnits::Degrees,
-                true,
-            ))),
-            claw: Mutex::new(Claw(p.port03.into_motor(
-                Gearset::EighteenToOne,
-                EncoderUnits::Degrees,
-                false,
-            ))),
+            arm: Mutex::new(Arm(p
+                .port08
+                .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true)
+                .unwrap())),
+            claw: Mutex::new(Claw(
+                p.port03
+                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false)
+                    .unwrap(),
+            )),
         }
     }
 

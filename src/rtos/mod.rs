@@ -41,7 +41,7 @@ impl Instant {
         Self(
             millis
                 .checked_mul(1000)
-                .expect("overflow when creating instant from seconds"),
+                .expect("overflow when creating Instant from milliseconds"),
         )
     }
 
@@ -50,7 +50,7 @@ impl Instant {
     pub fn from_secs(secs: u64) -> Self {
         Self(
             secs.checked_mul(1000000)
-                .expect("overflow when creating instant from seconds"),
+                .expect("overflow when creating Instant from seconds"),
         )
     }
 
@@ -503,6 +503,37 @@ pub fn select_either<'a, T: 'a>(
     }
 
     EitherSelect(fst, snd, PhantomData)
+}
+
+#[inline]
+/// Creates a new [`Selectable`] event which never completes if the given base
+/// event is None.
+pub fn select_option<'a, T: 'a>(base: Option<impl Selectable<T> + 'a>) -> impl Selectable<T> + 'a {
+    struct OptionSelect<T, E: Selectable<T>>(Option<E>, PhantomData<T>);
+
+    impl<T, E: Selectable<T>> Selectable<T> for OptionSelect<T, E> {
+        fn poll(self) -> Result<T, Self> {
+            Err(Self(
+                if let Some(e) = self.0 {
+                    match e.poll() {
+                        Ok(r) => return Ok(r),
+                        Err(e) => Some(e),
+                    }
+                } else {
+                    None
+                },
+                PhantomData,
+            ))
+        }
+
+        fn sleep(&self) -> GenericSleep {
+            self.0
+                .as_ref()
+                .map_or(GenericSleep::NotifyTake(None), Selectable::sleep)
+        }
+    }
+
+    OptionSelect(base, PhantomData)
 }
 
 #[inline]
