@@ -9,13 +9,13 @@ use syn::{
 
 #[derive(Debug)]
 pub struct Input {
-    attrs: Vec<Attribute>,
-    vis: Visibility,
-    name: Ident,
-    args: Args,
-    vars: Vars,
-    init: InitialState,
-    states: Vec<State>,
+    pub attrs: Vec<Attribute>,
+    pub vis: Visibility,
+    pub name: Ident,
+    pub args: Args,
+    pub vars: Vars,
+    pub init: InitialState,
+    pub states: Vec<State>,
 }
 
 impl Parse for Input {
@@ -36,8 +36,8 @@ impl Parse for Input {
 
 #[derive(Debug)]
 pub struct Args {
-    paren_token: Option<Paren>,
-    content: Punctuated<FnArg, Token![,]>,
+    pub paren_token: Option<Paren>,
+    pub content: Punctuated<FnArg, Token![,]>,
 }
 
 impl Parse for Args {
@@ -64,8 +64,8 @@ impl Parse for Args {
 
 #[derive(Debug)]
 pub struct Vars {
-    brace_token: Option<Brace>,
-    content: Punctuated<Var, Token![;]>,
+    pub brace_token: Option<Brace>,
+    pub content: Punctuated<Var, Token![;]>,
 }
 
 impl Parse for Vars {
@@ -92,9 +92,9 @@ impl Parse for Vars {
 
 #[derive(Debug)]
 pub struct Var {
-    field: Field,
-    eq_token: Token![=],
-    initializer: Expr,
+    pub field: Field,
+    pub eq_token: Token![=],
+    pub initializer: Expr,
 }
 
 impl Parse for Var {
@@ -109,11 +109,11 @@ impl Parse for Var {
 
 #[derive(Debug)]
 pub struct InitialState {
-    eq_token: Token![=],
-    state: Ident,
-    paren_token: Paren,
-    args: Punctuated<Expr, Token![,]>,
-    semi_token: Token![;],
+    pub eq_token: Token![=],
+    pub state: Ident,
+    pub paren_token: Paren,
+    pub args: Punctuated<Expr, Token![,]>,
+    pub semi_token: Token![;],
 }
 
 impl Parse for InitialState {
@@ -131,15 +131,15 @@ impl Parse for InitialState {
 
 #[derive(Debug)]
 pub struct State {
-    attrs: Vec<Attribute>,
-    name: Ident,
-    paren_token: Paren,
-    ctx: Ident,
-    comma_token: Option<Token![,]>,
-    args: Punctuated<FnArg, Token![,]>,
-    refs: VarRefs,
-    return_type: ReturnType,
-    body: Block,
+    pub attrs: Vec<Attribute>,
+    pub name: Ident,
+    pub paren_token: Paren,
+    pub ctx: Ident,
+    pub comma_token: Option<Token![,]>,
+    pub args: Punctuated<FnArg, Token![,]>,
+    pub refs: VarRefs,
+    pub return_type: ReturnType,
+    pub body: Block,
 }
 
 impl Parse for State {
@@ -161,8 +161,8 @@ impl Parse for State {
 
 #[derive(Debug)]
 pub struct VarRefs {
-    bracket_token: Option<Bracket>,
-    content: Punctuated<Ident, Token![,]>,
+    pub bracket_token: Option<Bracket>,
+    pub content: Punctuated<Ident, Token![,]>,
 }
 
 impl Parse for VarRefs {
