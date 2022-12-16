@@ -44,8 +44,12 @@ impl DriveTrain {
 //     }
 // }
 
-#[make_state_machine(initialize = foo(bar))]
-mod test {}
+make_state_machine! {
+    /// Test
+    pub Drive(drive: DriveTrain) {
+        drive: DriveTrain = drive
+    }
+}
 
 struct Bot {
     controller: Controller,
