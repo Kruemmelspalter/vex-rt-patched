@@ -29,6 +29,7 @@ macro_rules! state_machine {
             )*
         }
 
+        #[derive(Clone)]
         struct Vars {
             $(
                 $(

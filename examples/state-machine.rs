@@ -3,6 +3,7 @@
 
 use core::time::Duration;
 use vex_rt::prelude::*;
+use vex_rt_macros::make_state_machine;
 
 struct DriveTrain {
     left: Motor,
@@ -31,17 +32,20 @@ impl DriveTrain {
     }
 }
 
-mod drive_state_machine {
-    vex_rt::state_machine! {
-        pub Drive(drive: super::DriveTrain) {
-            drive: super::DriveTrain = drive,
-        } = idle();
+// mod drive_state_machine {
+//     vex_rt::state_machine! {
+//         pub Drive(drive: super::DriveTrain) {
+//             drive: super::DriveTrain = drive,
+//         } = idle();
 
-        idle(ctx) [drive] {
-            drive.drive(0, 0).unwrap();
-        }
-    }
-}
+//         idle(ctx) [drive] {
+//             drive.drive(0, 0).unwrap();
+//         }
+//     }
+// }
+
+#[make_state_machine(initialize = foo(bar))]
+mod test {}
 
 struct Bot {
     controller: Controller,
@@ -63,10 +67,12 @@ impl Robot for Bot {
             drivetrain: Mutex::new(DriveTrain {
                 left: p
                     .port01
-                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false),
+                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false)
+                    .unwrap(),
                 right: p
                     .port10
-                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true),
+                    .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true)
+                    .unwrap(),
             }),
         }
     }

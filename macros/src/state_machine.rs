@@ -1,14 +1,16 @@
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::{
     parse::{Parse, ParseStream},
     parse_macro_input,
     punctuated::Punctuated,
-    Error, Expr, Ident, ItemMod, Token,
+    spanned::Spanned,
+    Error, Expr, ExprCall, Ident, ItemMod, Token,
 };
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Arguments {
-    initialize: Option<Expr>,
+    initialize: Option<ExprCall>,
 }
 
 impl Parse for Arguments {
@@ -19,7 +21,17 @@ impl Parse for Arguments {
                 input.parse_terminated(Argument::parse)?;
             for argument in arguments {
                 match argument.key.to_string().as_str() {
-                    "initialize" => result.initialize = Some(argument.value),
+                    "initialize" => {
+                        if result.initialize.is_some() {
+                            return Err(Error::new(argument.key.span(), "duplicate argument"));
+                        }
+                        result.initialize = match argument.value {
+                            Expr::Call(expr) => Some(expr),
+                            value => {
+                                return Err(Error::new(value.span(), "expected call expression"))
+                            }
+                        }
+                    }
                     _ => return Err(Error::new(argument.key.span(), "unrecognized option")),
                 }
             }
@@ -42,8 +54,13 @@ impl Parse for Argument {
     }
 }
 
-pub fn make_state_machine(item: TokenStream) -> TokenStream {
-    // let arguments = parse_macro_input!(attr as Arguments);
+pub fn make_state_machine(args: TokenStream, item: TokenStream) -> TokenStream {
+    let arguments = parse_macro_input!(args as Arguments);
     let body = parse_macro_input!(item as ItemMod);
-    todo!()
+
+    println!("{:#?}", arguments);
+
+    quote!(#body).into()
 }
+
+// TODO: switch to function-style macro to keep compatible syntax.
