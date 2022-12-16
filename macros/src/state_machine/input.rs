@@ -1,17 +1,14 @@
 use itertools::Itertools;
-use proc_macro::TokenStream;
-use quote::quote;
 use syn::{
     braced, bracketed, parenthesized,
     parse::{Nothing, Parse, ParseStream},
-    parse_macro_input,
     punctuated::Punctuated,
     token::{Brace, Bracket, Paren},
     Attribute, Block, Expr, Field, FnArg, Ident, ReturnType, Token, Visibility,
 };
 
 #[derive(Debug)]
-struct Input {
+pub struct Input {
     attrs: Vec<Attribute>,
     vis: Visibility,
     name: Ident,
@@ -38,7 +35,7 @@ impl Parse for Input {
 }
 
 #[derive(Debug)]
-struct Args {
+pub struct Args {
     paren_token: Option<Paren>,
     content: Punctuated<FnArg, Token![,]>,
 }
@@ -66,7 +63,7 @@ impl Parse for Args {
 }
 
 #[derive(Debug)]
-struct Vars {
+pub struct Vars {
     brace_token: Option<Brace>,
     content: Punctuated<Var, Token![;]>,
 }
@@ -94,7 +91,7 @@ impl Parse for Vars {
 }
 
 #[derive(Debug)]
-struct Var {
+pub struct Var {
     field: Field,
     eq_token: Token![=],
     initializer: Expr,
@@ -111,7 +108,7 @@ impl Parse for Var {
 }
 
 #[derive(Debug)]
-struct InitialState {
+pub struct InitialState {
     eq_token: Token![=],
     state: Ident,
     paren_token: Paren,
@@ -133,7 +130,7 @@ impl Parse for InitialState {
 }
 
 #[derive(Debug)]
-struct State {
+pub struct State {
     attrs: Vec<Attribute>,
     name: Ident,
     paren_token: Paren,
@@ -163,7 +160,7 @@ impl Parse for State {
 }
 
 #[derive(Debug)]
-struct VarRefs {
+pub struct VarRefs {
     bracket_token: Option<Bracket>,
     content: Punctuated<Ident, Token![,]>,
 }
@@ -189,16 +186,3 @@ impl Parse for VarRefs {
         }
     }
 }
-
-pub fn make_state_machine(input: TokenStream) -> TokenStream {
-    // let arguments = parse_macro_input!(args as Arguments);
-    // let body = parse_macro_input!(item as ItemMod);
-    let input = parse_macro_input!(input as Input);
-
-    println!("{:#?}", input);
-
-    // quote!(#body).into()
-    todo!()
-}
-
-// TODO: switch to function-style macro to keep compatible syntax.
