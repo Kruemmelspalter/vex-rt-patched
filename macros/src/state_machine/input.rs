@@ -15,7 +15,7 @@ pub struct Input {
     pub semi_token: Token![;],
     pub attrs: Vec<Attribute>,
     pub vis: Visibility,
-    pub name: Ident,
+    pub ident: Ident,
     pub generics: Generics,
     pub args: Args,
     pub vars: Vars,
@@ -30,7 +30,7 @@ impl Parse for Input {
             semi_token: Parse::parse(input)?,
             attrs: Attribute::parse_outer(input)?,
             vis: Visibility::parse(input)?,
-            name: Ident::parse(input)?,
+            ident: Ident::parse(input)?,
             generics: Generics::parse(input)?,
             args: Args::parse(input)?,
             vars: Vars::parse(input)?,
@@ -119,20 +119,35 @@ impl Parse for Var {
 pub struct InitialState {
     pub eq_token: Token![=],
     pub state: Ident,
-    pub paren_token: Paren,
+    pub paren_token: Option<Paren>,
     pub args: Punctuated<Expr, Token![,]>,
     pub semi_token: Token![;],
 }
 
 impl Parse for InitialState {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let paren_content;
-        Ok(Self {
-            eq_token: Parse::parse(input)?,
-            state: Ident::parse(input)?,
-            paren_token: parenthesized!(paren_content in input),
-            args: Punctuated::parse_terminated(&paren_content)?,
-            semi_token: Parse::parse(input)?,
+        let eq_token = Parse::parse(input)?;
+        let state = Ident::parse(input)?;
+        let lookahead = input.lookahead1();
+        Ok(if lookahead.peek(Paren) {
+            let paren_content;
+            Self {
+                eq_token,
+                state,
+                paren_token: Some(parenthesized!(paren_content in input)),
+                args: Punctuated::parse_terminated(&paren_content)?,
+                semi_token: Parse::parse(input)?,
+            }
+        } else if lookahead.peek(Token![;]) {
+            Self {
+                eq_token,
+                state,
+                paren_token: None,
+                args: Punctuated::new(),
+                semi_token: Parse::parse(input)?,
+            }
+        } else {
+            return Err(lookahead.error());
         })
     }
 }
