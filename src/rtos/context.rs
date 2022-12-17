@@ -15,6 +15,7 @@ use crate::select_merge;
 type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
 
 #[derive(Clone)]
+#[repr(transparent)]
 /// Represents an ongoing operation which could be cancelled in the future.
 /// Inspired by contexts in the Go programming language.
 ///
@@ -219,6 +220,11 @@ impl ContextWrapper {
     /// Creates a new `ContextWrapper` objects.
     pub fn new() -> Self {
         Self(None)
+    }
+
+    /// Gets the current context, if one exists.
+    pub fn current(&self) -> Option<&Context> {
+        self.0.as_ref()
     }
 
     /// Cancels the last context, creating a new global context in its place

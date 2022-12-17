@@ -110,12 +110,13 @@ macro_rules! state_machine {
             }
 
             #[inline]
-            fn transition(&self, state: State) {
+            fn transition(&self, state: State) -> $crate::rtos::Context {
                 match state {
                     $(
                         State::$state($($pname),*) => self.$state($($pname),*),
                     )*
                 };
+                todo!()
             }
         }
     };

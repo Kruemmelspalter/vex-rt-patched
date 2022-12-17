@@ -5,8 +5,8 @@ use syn::{
     punctuated::Punctuated,
     spanned::Spanned,
     token::{Brace, Bracket, Paren},
-    Attribute, Block, Error, Expr, Field, FnArg, Generics, Ident, PatType, Path, ReturnType, Token,
-    Visibility,
+    Attribute, Block, Error, Expr, Field, FieldPat, FnArg, Generics, Ident, Member, Pat, PatIdent,
+    PatType, Path, ReturnType, Token, Visibility,
 };
 
 #[derive(Clone, Debug)]
@@ -155,7 +155,7 @@ impl Parse for InitialState {
 #[derive(Clone, Debug)]
 pub struct State {
     pub attrs: Vec<Attribute>,
-    pub name: Ident,
+    pub ident: Ident,
     pub paren_token: Paren,
     pub ctx: Ident,
     pub comma_token: Option<Token![,]>,
@@ -170,7 +170,7 @@ impl Parse for State {
         let paren_content;
         Ok(Self {
             attrs: Attribute::parse_outer(input)?,
-            name: Ident::parse(input)?,
+            ident: Ident::parse(input)?,
             paren_token: parenthesized!(paren_content in input),
             ctx: Ident::parse(&paren_content)?,
             comma_token: Parse::parse(&paren_content)?,
@@ -185,7 +185,7 @@ impl Parse for State {
 #[derive(Clone, Debug)]
 pub struct VarRefs {
     pub bracket_token: Option<Bracket>,
-    pub content: Punctuated<Ident, Token![,]>,
+    pub content: Punctuated<FieldPat, Token![,]>,
 }
 
 impl Parse for VarRefs {
@@ -194,7 +194,34 @@ impl Parse for VarRefs {
         if lookahead.peek(Bracket) {
             let bracket_content;
             let bracket_token = bracketed!(bracket_content in input);
-            let content = Punctuated::parse_terminated(&bracket_content)?;
+            let content = Punctuated::parse_terminated_with(&bracket_content, |input| {
+                let attrs = Attribute::parse_outer(input)?;
+                let ident = Ident::parse(input)?;
+                let lookahead = input.lookahead1();
+                if lookahead.peek(Token![:]) {
+                    Ok(FieldPat {
+                        attrs,
+                        member: Member::Named(ident),
+                        colon_token: Some(Parse::parse(input)?),
+                        pat: Parse::parse(input)?,
+                    })
+                } else if input.is_empty() || lookahead.peek(Token![,]) {
+                    Ok(FieldPat {
+                        attrs,
+                        member: Member::Named(ident.clone()),
+                        colon_token: None,
+                        pat: Box::new(Pat::Ident(PatIdent {
+                            attrs: Vec::new(),
+                            by_ref: None,
+                            mutability: None,
+                            ident,
+                            subpat: None,
+                        })),
+                    })
+                } else {
+                    Err(lookahead.error())
+                }
+            })?;
             Ok(Self {
                 bracket_token: Some(bracket_token),
                 content,
