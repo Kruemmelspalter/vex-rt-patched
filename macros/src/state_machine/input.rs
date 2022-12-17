@@ -1,17 +1,22 @@
 use itertools::Itertools;
 use syn::{
     braced, bracketed, parenthesized,
-    parse::{Nothing, Parse, ParseStream},
+    parse::{Nothing, Parse, ParseBuffer, ParseStream},
     punctuated::Punctuated,
+    spanned::Spanned,
     token::{Brace, Bracket, Paren},
-    Attribute, Block, Expr, Field, FnArg, Ident, ReturnType, Token, Visibility,
+    Attribute, Block, Error, Expr, Field, FnArg, Generics, Ident, PatType, Path, ReturnType, Token,
+    Visibility,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Input {
+    pub crate_: Path,
+    pub semi_token: Token![;],
     pub attrs: Vec<Attribute>,
     pub vis: Visibility,
     pub name: Ident,
+    pub generics: Generics,
     pub args: Args,
     pub vars: Vars,
     pub init: InitialState,
@@ -21,9 +26,12 @@ pub struct Input {
 impl Parse for Input {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
+            crate_: Path::parse(input)?,
+            semi_token: Parse::parse(input)?,
             attrs: Attribute::parse_outer(input)?,
             vis: Visibility::parse(input)?,
             name: Ident::parse(input)?,
+            generics: Generics::parse(input)?,
             args: Args::parse(input)?,
             vars: Vars::parse(input)?,
             init: InitialState::parse(input)?,
@@ -34,10 +42,10 @@ impl Parse for Input {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Args {
     pub paren_token: Option<Paren>,
-    pub content: Punctuated<FnArg, Token![,]>,
+    pub content: Punctuated<PatType, Token![,]>,
 }
 
 impl Parse for Args {
@@ -46,7 +54,7 @@ impl Parse for Args {
         if lookahead.peek(Paren) {
             let paren_content;
             let paren_token = parenthesized!(paren_content in input);
-            let content = Punctuated::parse_terminated(&paren_content)?;
+            let content = Punctuated::parse_terminated_with(&paren_content, parse_pat_type)?;
             Ok(Self {
                 paren_token: Some(paren_token),
                 content,
@@ -62,10 +70,10 @@ impl Parse for Args {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Vars {
     pub brace_token: Option<Brace>,
-    pub content: Punctuated<Var, Token![;]>,
+    pub content: Punctuated<Var, Token![,]>,
 }
 
 impl Parse for Vars {
@@ -90,7 +98,7 @@ impl Parse for Vars {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Var {
     pub field: Field,
     pub eq_token: Token![=],
@@ -107,7 +115,7 @@ impl Parse for Var {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct InitialState {
     pub eq_token: Token![=],
     pub state: Ident,
@@ -129,14 +137,14 @@ impl Parse for InitialState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct State {
     pub attrs: Vec<Attribute>,
     pub name: Ident,
     pub paren_token: Paren,
     pub ctx: Ident,
     pub comma_token: Option<Token![,]>,
-    pub args: Punctuated<FnArg, Token![,]>,
+    pub args: Punctuated<PatType, Token![,]>,
     pub refs: VarRefs,
     pub return_type: ReturnType,
     pub body: Block,
@@ -151,7 +159,7 @@ impl Parse for State {
             paren_token: parenthesized!(paren_content in input),
             ctx: Ident::parse(&paren_content)?,
             comma_token: Parse::parse(&paren_content)?,
-            args: Punctuated::parse_terminated(&paren_content)?,
+            args: Punctuated::parse_terminated_with(&paren_content, parse_pat_type)?,
             refs: VarRefs::parse(input)?,
             return_type: ReturnType::parse(input)?,
             body: Block::parse(input)?,
@@ -159,7 +167,7 @@ impl Parse for State {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct VarRefs {
     pub bracket_token: Option<Bracket>,
     pub content: Punctuated<Ident, Token![,]>,
@@ -184,5 +192,15 @@ impl Parse for VarRefs {
         } else {
             Err(lookahead.error())
         }
+    }
+}
+
+fn parse_pat_type(input: &ParseBuffer) -> syn::Result<PatType> {
+    match FnArg::parse(input)? {
+        FnArg::Receiver(arg) => Err(Error::new(
+            arg.span(),
+            "receiver (self) arguments are not permitted!",
+        )),
+        FnArg::Typed(arg) => Ok(arg),
     }
 }

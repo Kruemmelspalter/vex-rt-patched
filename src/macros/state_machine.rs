@@ -1,6 +1,3 @@
-#[doc(hidden)]
-pub use vex_rt_macros::make_state_machine;
-
 #[macro_export]
 /// Creates an asynchronous state machine with the given visibility, name and
 /// state definitions.
@@ -121,5 +118,12 @@ macro_rules! state_machine {
                 };
             }
         }
+    };
+}
+
+#[macro_export]
+macro_rules! state_machine2 {
+    ($($args:tt)*) => {
+        $crate::macros::make_state_machine!($crate; $($args)*);
     };
 }

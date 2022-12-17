@@ -2,7 +2,7 @@
 #![no_main]
 
 use core::time::Duration;
-use vex_rt::prelude::*;
+use vex_rt::{prelude::*, state_machine2};
 use vex_rt_macros::make_state_machine;
 
 struct DriveTrain {
@@ -44,10 +44,10 @@ impl DriveTrain {
 //     }
 // }
 
-make_state_machine! {
+state_machine2! {
     /// Test
     pub Drive(drive: DriveTrain) {
-        drive: DriveTrain = drive;
+        drive: DriveTrain = drive,
     } = idle();
 
     idle(ctx) [drive] {
