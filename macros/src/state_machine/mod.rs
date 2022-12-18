@@ -369,7 +369,9 @@ fn gen_impl(
     };
 
     let mut items = vec![ImplItem::Method(ImplItemMethod {
-        attrs: Vec::new(),
+        attrs: vec![parse_quote! {
+            /// Constructs a new instance of the state machine.
+        }],
         vis: parse_quote!(pub),
         defaultness: None,
         sig: Signature {

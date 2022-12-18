@@ -5,8 +5,7 @@
 #![feature(negative_impls)]
 #![warn(missing_docs)]
 
-#[doc(hidden)]
-pub extern crate alloc;
+extern crate alloc;
 
 use core::panic::PanicInfo;
 
