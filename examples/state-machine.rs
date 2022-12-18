@@ -87,7 +87,7 @@ impl Robot for Bot {
 
     // This function will get invoked when the robot is placed
     // under operator control.
-    fn opcontrol(&'static self, ctx: Context) {
+    fn opcontrol(&mut self, ctx: Context) {
         let mut pause = Loop::new(Duration::from_millis(100));
 
         // We will run a loop to check controls on the controller and

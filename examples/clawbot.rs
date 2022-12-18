@@ -37,16 +37,16 @@ struct Claw(Motor);
 
 struct Bot {
     controller: Controller,
-    drivetrain: Mutex<DriveTrain>,
-    arm: Mutex<Arm>,
-    claw: Mutex<Claw>,
+    drivetrain: DriveTrain,
+    arm: Arm,
+    claw: Claw,
 }
 
 impl Bot {
     // Waits for access to the drivetrain, then passes
     // its arguments to the drive method of the drivetrain.
-    fn drive(&self, x: i8, y: i8) -> Result<(), MotorError> {
-        self.drivetrain.lock().drive(x, y)
+    fn drive(&mut self, x: i8, y: i8) -> Result<(), MotorError> {
+        self.drivetrain.drive(x, y)
     }
 
     // Waits for access to the claw, then tells the motor to
@@ -58,11 +58,11 @@ impl Bot {
     // then stop automatically.
     // The `grip` call will block until the claw stops. This will
     // take a minimum of 500 ms.
-    fn grip(&self, speed: i8) -> Result<(), MotorError> {
+    fn grip(&mut self, speed: i8) -> Result<(), MotorError> {
         let mut flag: u8 = 0;
-        self.claw.lock().0.move_i8(speed)?;
+        self.claw.0.move_i8(speed)?;
         while flag < 5 {
-            flag = match self.claw.lock().0.get_actual_velocity() {
+            flag = match self.claw.0.get_actual_velocity() {
                 Ok(v) if (v > -10.0 && v < 10.0) => flag + 1,
                 Ok(_) => 0,
                 _ => flag,
@@ -75,15 +75,15 @@ impl Bot {
         // completely to 0. It is not recommended to keep the claw in a
         // gripping state for extended periods.
         match 0 < speed {
-            true => self.claw.lock().0.move_i8(6),
-            false => self.claw.lock().0.move_i8(0),
+            true => self.claw.0.move_i8(6),
+            false => self.claw.0.move_i8(0),
         }
     }
 
     // Waits for access to the arm, then rotates the motor
     // to move the arm up and down at the specified speed.
-    fn lift(&self, velocity: i8) -> Result<(), MotorError> {
-        self.arm.lock().0.move_i8(velocity)
+    fn lift(&mut self, velocity: i8) -> Result<(), MotorError> {
+        self.arm.0.move_i8(velocity)
     }
 }
 
@@ -91,7 +91,7 @@ impl Robot for Bot {
     fn new(p: Peripherals) -> Self {
         Bot {
             controller: p.master_controller,
-            drivetrain: Mutex::new(DriveTrain {
+            drivetrain: DriveTrain {
                 left: p
                     .port01
                     .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false)
@@ -100,22 +100,22 @@ impl Robot for Bot {
                     .port10
                     .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true)
                     .unwrap(),
-            }),
-            arm: Mutex::new(Arm(p
+            },
+            arm: Arm(p
                 .port08
                 .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true)
-                .unwrap())),
-            claw: Mutex::new(Claw(
+                .unwrap()),
+            claw: Claw(
                 p.port03
                     .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false)
                     .unwrap(),
-            )),
+            ),
         }
     }
 
     // This function will get invoked when the robot is placed
     // under operator control.
-    fn opcontrol(&'static self, ctx: Context) {
+    fn opcontrol(&mut self, ctx: Context) {
         let mut pause = Loop::new(Duration::from_millis(100));
 
         // We will run a loop to check controls on the controller and

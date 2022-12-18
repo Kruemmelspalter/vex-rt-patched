@@ -16,16 +16,16 @@ impl DriveTrain {
     }
 }
 
-struct ClawBot {
+struct ControllerBot {
     controller: Controller,
-    drive_train: Mutex<DriveTrain>,
+    drive_train: DriveTrain,
 }
 
-impl Robot for ClawBot {
+impl Robot for ControllerBot {
     fn new(p: Peripherals) -> Self {
-        ClawBot {
+        ControllerBot {
             controller: p.master_controller,
-            drive_train: Mutex::new(DriveTrain {
+            drive_train: DriveTrain {
                 left_motor: p
                     .port01
                     .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false)
@@ -34,30 +34,29 @@ impl Robot for ClawBot {
                     .port02
                     .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, true)
                     .unwrap(),
-            }),
+            },
         }
     }
 
-    fn opcontrol(&self, ctx: Context) {
+    fn opcontrol(&mut self, ctx: Context) {
         let mut l = Loop::new(Duration::from_millis(10));
-        let mut drive_train = self.drive_train.lock();
 
         loop {
             select! {
                 _ = ctx.done() => break,
                 _ = l.select() => {
                     let velocity = self.controller.left_stick.get_x().unwrap();
-                    drive_train.spin(velocity);
+                    self.drive_train.spin(velocity);
                 },
             }
         }
     }
 
-    fn disabled(&self, _ctx: Context) {
-        self.drive_train.lock().spin(0);
+    fn disabled(&mut self, _ctx: Context) {
+        self.drive_train.spin(0);
     }
 
-    fn initialize(&self, _ctx: Context) {
+    fn initialize(&mut self, _ctx: Context) {
         println!("level: {}", self.controller.get_battery_level().unwrap());
         println!(
             "capacity: {}",
@@ -66,4 +65,4 @@ impl Robot for ClawBot {
     }
 }
 
-entry!(ClawBot);
+entry!(ControllerBot);

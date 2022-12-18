@@ -10,7 +10,7 @@ impl Robot for BatteryBot {
         Self {}
     }
 
-    fn opcontrol(&'static self, _ctx: Context) {
+    fn opcontrol(&mut self, _ctx: Context) {
         println!("Battery Capacity: {}", Battery::get_capacity().unwrap());
         println!("Battery Current: {}", Battery::get_current().unwrap());
         println!(
