@@ -346,7 +346,7 @@ fn gen_impl(
     };
 
     let run = ItemFn {
-        attrs: Vec::new(),
+        attrs: vec![parse_quote!(#[inline])],
         vis: Visibility::Inherited,
         sig: Signature {
             constness: None,
@@ -391,6 +391,7 @@ fn gen_impl(
         block: parse_quote! {{
             #run
 
+            #[allow(clippy::redundant_field_names)]
             let mut vars__: #vars_ident #vars_generics_args = #vars_init;
             let state__ = #state_init;
             let self__ = Self(
@@ -421,7 +422,7 @@ fn gen_impl(
             quote!((#(#args,)*))
         };
         let ty = if let ReturnType::Type(_, ty) = &s.return_type {
-            (&**ty).clone()
+            (**ty).clone()
         } else {
             parse_quote!(())
         };
