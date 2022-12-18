@@ -9,9 +9,10 @@ use syn::{
     punctuated::{Pair, Punctuated},
     token::{Brace, Enum, Paren, Semi, Struct},
     Arm, Attribute, Expr, ExprCall, ExprMatch, ExprPath, ExprStruct, Field, FieldValue, Fields,
-    FieldsNamed, FieldsUnnamed, Generics, Ident, ImplItem, ImplItemMethod, ImplItemType, ItemEnum,
-    ItemFn, ItemImpl, ItemStruct, Member, Pat, PatTuple, PatTupleStruct, Path, PathArguments,
-    PathSegment, ReturnType, Signature, Type, TypePath, Variant, Visibility,
+    FieldsNamed, FieldsUnnamed, FnArg, Generics, Ident, ImplItem, ImplItemMethod, ImplItemType,
+    ItemEnum, ItemFn, ItemImpl, ItemStruct, Member, Pat, PatTuple, PatTupleStruct, Path,
+    PathArguments, PathSegment, Receiver, ReturnType, Signature, Type, TypePath, Variant,
+    Visibility,
 };
 
 use crate::util::{filter_generics, generics_as_args, ident_append, ident_to_case};
@@ -356,7 +357,7 @@ fn gen_impl(
             unsafety: None,
             abi: None,
             fn_token: Default::default(),
-            ident: parse_quote!(run),
+            ident: parse_quote!(run__),
             generics: generics.clone(),
             paren_token: Default::default(),
             inputs: parse_quote!(data__: &#crate_::machine::StateMachineHandle<#state_ident #state_generics_args>, vars__: &mut #vars_ident #vars_generics_args),
@@ -368,6 +369,115 @@ fn gen_impl(
             #state_match
         }},
     };
+
+    let mut items = vec![ImplItem::Method(ImplItemMethod {
+        attrs: Vec::new(),
+        vis: parse_quote!(pub),
+        defaultness: None,
+        sig: Signature {
+            constness: None,
+            asyncness: None,
+            unsafety: None,
+            abi: None,
+            fn_token: Default::default(),
+            ident: parse_quote!(new),
+            generics: new_generics,
+            paren_token: args.paren_token.unwrap_or_default(),
+            inputs: Punctuated::from_iter(args.content.pairs().map(|p| {
+                let (arg, punct) = p.into_tuple();
+                Pair::new(syn::FnArg::Typed(arg.clone()), punct.cloned())
+            })),
+            variadic: None,
+            output: parse_quote!(-> Self),
+        },
+        block: parse_quote! {{
+            #run
+
+            let mut vars__: #vars_ident #vars_generics_args = #vars_init;
+            let state__ = #state_init;
+            let self__ = Self(
+                #crate_::machine::StateMachineData::new_wrapped(state__.clone()),
+                ::core::marker::PhantomData,
+            );
+            let data__ = self__.0.clone();
+            #crate_::rtos::Task::spawn_ext(
+                #task_name,
+                #crate_::rtos::Task::DEFAULT_PRIORITY,
+                #crate_::rtos::Task::DEFAULT_STACK_DEPTH,
+                move || loop {
+                    run__(&data__, &mut vars__);
+                },
+            ).unwrap();
+            self__
+        }},
+    })];
+
+    let promise: Path = parse_quote!(#crate_::rtos::Promise);
+
+    for s in states {
+        let pascal_ident = ident_to_case(&s.ident, Case::Pascal);
+        let args = if s.args.is_empty() {
+            quote!()
+        } else {
+            let args = s.args.iter().map(|pat| &*pat.pat);
+            quote!((#(#args,)*))
+        };
+        let ty = if let ReturnType::Type(_, ty) = &s.return_type {
+            (&**ty).clone()
+        } else {
+            parse_quote!(())
+        };
+
+        items.push(ImplItem::Method(ImplItemMethod {
+            attrs: s.attrs.clone(),
+            vis: parse_quote!(pub),
+            defaultness: None,
+            sig: Signature {
+                constness: None,
+                asyncness: None,
+                unsafety: None,
+                abi: None,
+                fn_token: Default::default(),
+                ident: s.ident.clone(),
+                generics: Default::default(),
+                paren_token: s.paren_token,
+                inputs: Punctuated::from_iter(
+                    [Pair::Punctuated(
+                        FnArg::Receiver(Receiver {
+                            attrs: Vec::new(),
+                            reference: Some(Default::default()),
+                            mutability: None,
+                            self_token: Default::default(),
+                        }),
+                        Default::default(),
+                    )]
+                    .into_iter()
+                    .chain(s.args.pairs().map(|p| {
+                        let (arg, punct) = p.into_tuple();
+                        Pair::new(FnArg::Typed(arg.clone()), punct.cloned())
+                    })),
+                ),
+                variadic: None,
+                output: if let ReturnType::Type(arrow, ty) = &s.return_type {
+                    ReturnType::Type(*arrow, parse_quote!(#promise<#ty>))
+                } else {
+                    ReturnType::Type(
+                        Default::default(),
+                        Box::new(Type::Path(TypePath {
+                            qself: None,
+                            path: promise.clone(),
+                        })),
+                    )
+                },
+            },
+            block: parse_quote! {{
+                let state__ = #state_ident::#pascal_ident #args;
+                let mut lock__ = self.0.lock();
+                lock__.transition(state__);
+                lock__.listen::<#ty>()
+            }},
+        }))
+    }
 
     ItemImpl {
         attrs: Vec::new(),
@@ -385,47 +495,7 @@ fn gen_impl(
             .into(),
         })),
         brace_token: Default::default(),
-        items: vec![ImplItem::Method(ImplItemMethod {
-            attrs: Vec::new(),
-            vis: parse_quote!(pub),
-            defaultness: None,
-            sig: Signature {
-                constness: None,
-                asyncness: None,
-                unsafety: None,
-                abi: None,
-                fn_token: Default::default(),
-                ident: parse_quote!(new),
-                generics: new_generics,
-                paren_token: args.paren_token.unwrap_or_default(),
-                inputs: Punctuated::from_iter(args.content.pairs().map(|p| {
-                    let (arg, punct) = p.into_tuple();
-                    Pair::new(syn::FnArg::Typed(arg.clone()), punct.cloned())
-                })),
-                variadic: None,
-                output: parse_quote!(-> Self),
-            },
-            block: parse_quote! {{
-                #run
-
-                let mut vars__: #vars_ident #vars_generics_args = #vars_init;
-                let state__ = #state_init;
-                let self__ = Self(
-                    #crate_::machine::StateMachineData::new_wrapped(state__.clone()),
-                    ::core::marker::PhantomData,
-                );
-                let data__ = self__.0.clone();
-                #crate_::rtos::Task::spawn_ext(
-                    #task_name,
-                    #crate_::rtos::Task::DEFAULT_PRIORITY,
-                    #crate_::rtos::Task::DEFAULT_STACK_DEPTH,
-                    move || loop {
-                        run(&data__, &mut vars__);
-                    },
-                ).unwrap();
-                self__
-            }},
-        })],
+        items,
     }
 }
 
