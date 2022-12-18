@@ -74,8 +74,8 @@ pub fn make_state_machine(input: Input) -> TokenStream {
     .into_token_stream();
     let main_impl = gen_impl(
         &input,
-        vars_ident.clone(),
-        vars_generics_args.clone(),
+        vars_ident,
+        vars_generics_args,
         state_ident.clone(),
         state_generics_args.clone(),
         main_generics.clone(),
@@ -202,7 +202,7 @@ fn gen_struct(
         vis: vis.clone(),
         struct_token: Struct::default(),
         ident: ident.clone(),
-        generics: generics.clone(),
+        generics,
         fields: Fields::Unnamed(parse_quote!((
             #crate_::machine::StateMachineHandle<#state_ident #state_generics_args>,
             ::core::marker::PhantomData<#vars_ident #vars_generics_args>,
@@ -241,7 +241,7 @@ fn gen_impl(
         Expr::Struct(ExprStruct {
             attrs: Vec::new(),
             path: vars_ident.clone().into(),
-            brace_token: brace.clone(),
+            brace_token: *brace,
             fields: Punctuated::from_iter(vars.content.pairs().map(|p| {
                 let (var, punct) = p.into_tuple();
                 Pair::new(
@@ -271,7 +271,7 @@ fn gen_impl(
         Expr::Call(ExprCall {
             attrs: Vec::new(),
             func: Box::new(initial_state),
-            paren_token: paren.clone(),
+            paren_token: *paren,
             args: init.args.clone(),
         })
     } else {
@@ -321,7 +321,7 @@ fn gen_impl(
                                 path,
                                 pat: PatTuple {
                                     attrs: Vec::new(),
-                                    paren_token: paren_token.clone(),
+                                    paren_token: *paren_token,
                                     elems: Punctuated::from_iter(args.pairs().map(|p| {
                                         let (arg, punct) = p.into_tuple();
                                         Pair::new((*arg.pat).clone(), punct.cloned())
@@ -470,7 +470,7 @@ fn gen_impl_sm(
                 ty: Type::Path(TypePath {
                     qself: None,
                     path: PathSegment {
-                        ident: state_ident.clone(),
+                        ident: state_ident,
                         arguments: state_generics_args,
                     }
                     .into(),

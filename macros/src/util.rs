@@ -103,7 +103,7 @@ pub fn filter_generics<'a>(
                             recurse(used, ty, bound);
                         }
                         if let ReturnType::Type(_, ty) = &args.output {
-                            recurse(used, &ty, bound)
+                            recurse(used, ty, bound)
                         }
                     }
                 }
@@ -223,7 +223,7 @@ pub fn generics_as_args(generics: &Generics) -> PathArguments {
     } else {
         PathArguments::AngleBracketed(AngleBracketedGenericArguments {
             colon2_token: None,
-            lt_token: generics.lt_token.clone().unwrap_or_default(),
+            lt_token: generics.lt_token.unwrap_or_default(),
             args: Punctuated::from_iter(generics.params.pairs().map(|p| {
                 let (param, punct) = p.into_tuple();
                 Pair::new(
@@ -242,7 +242,7 @@ pub fn generics_as_args(generics: &Generics) -> PathArguments {
                     punct.cloned(),
                 )
             })),
-            gt_token: generics.gt_token.clone().unwrap_or_default(),
+            gt_token: generics.gt_token.unwrap_or_default(),
         })
     }
 }
