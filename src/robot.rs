@@ -1,9 +1,9 @@
 //! For use with the [`entry!`](crate::entry!) macro.
 
-use crate::{io::println, peripherals::Peripherals, rtos::Context};
+use crate::{io::println, peripherals::Peripherals, rtos::Context, state_machine2};
 
 /// A trait representing a competition-ready VEX Robot.
-pub trait Robot {
+pub trait Robot: Send + Sync + 'static {
     /// Runs at startup, constructing your robot. This should be non-blocking,
     /// since the FreeRTOS scheduler doesn't start until it returns.
     fn new(peripherals: Peripherals) -> Self;
@@ -32,5 +32,18 @@ pub trait Robot {
     /// Runs when the robot is disabled.
     fn disabled(&'static self, _ctx: Context) {
         println!("disabled");
+    }
+}
+
+state_machine2! {
+    /// Competition state machine.
+    pub Competition<R: Robot>(robot: R) {
+        #[allow(dead_code)]
+        robot: R = robot,
+    } = initialize;
+
+    /// Runs on initialization.
+    initialize(_ctx) {
+        println!("initialize");
     }
 }

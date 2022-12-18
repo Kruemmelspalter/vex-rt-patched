@@ -1,5 +1,6 @@
 use std::{iter::empty, ops::Deref};
 
+use convert_case::Case;
 use itertools::Itertools;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
@@ -7,13 +8,13 @@ use syn::{
     parse_quote,
     punctuated::{Pair, Punctuated},
     token::{Brace, Enum, Paren, Semi, Struct},
-    Arm, Expr, ExprCall, ExprMatch, ExprPath, ExprStruct, Field, FieldValue, Fields, FieldsNamed,
-    FieldsUnnamed, Generics, Ident, ImplItem, ImplItemMethod, ImplItemType, ItemEnum, ItemFn,
-    ItemImpl, ItemStruct, Member, Pat, PatTuple, PatTupleStruct, PathArguments, PathSegment,
-    ReturnType, Signature, Type, TypePath, Variant, Visibility,
+    Arm, Attribute, Expr, ExprCall, ExprMatch, ExprPath, ExprStruct, Field, FieldValue, Fields,
+    FieldsNamed, FieldsUnnamed, Generics, Ident, ImplItem, ImplItemMethod, ImplItemType, ItemEnum,
+    ItemFn, ItemImpl, ItemStruct, Member, Pat, PatTuple, PatTupleStruct, Path, PathArguments,
+    PathSegment, ReturnType, Signature, Type, TypePath, Variant, Visibility,
 };
 
-use crate::util::{filter_generics, generics_as_args, ident_append};
+use crate::util::{filter_generics, generics_as_args, ident_append, ident_to_case};
 
 use self::input::{Input, State};
 
@@ -126,37 +127,56 @@ fn gen_vars_struct(input: &Input, ident: Ident, generics: Generics) -> ItemStruc
 }
 
 fn gen_state_enum(input: &Input, ident: Ident, generics: Generics) -> ItemEnum {
+    let doc = format!("State type for the [`{}`] state machine.", input.ident);
+
+    let doc_path: Path = parse_quote!(doc);
+
     ItemEnum {
-        attrs: vec![parse_quote!(#[derive(::core::clone::Clone)])],
+        attrs: vec![
+            parse_quote!(#[derive(::core::clone::Clone)]),
+            Attribute {
+                pound_token: Default::default(),
+                style: syn::AttrStyle::Outer,
+                bracket_token: Default::default(),
+                path: doc_path.clone(),
+                tokens: quote!(= #doc),
+            },
+        ],
         vis: input.vis.clone(),
         enum_token: Enum(Span::call_site()),
         ident,
         generics,
         brace_token: Brace::default(),
-        variants: Punctuated::from_iter(input.states.iter().map(|s| Variant {
-            attrs: s.attrs.clone(),
-            ident: s.ident.clone(),
-            fields: if s.args.is_empty() {
-                Fields::Unit
-            } else {
-                Fields::Unnamed(FieldsUnnamed {
-                    paren_token: Paren::default(),
-                    unnamed: Punctuated::from_iter(s.args.pairs().map(|p| {
-                        let (arg, punct) = p.into_tuple();
-                        Pair::new(
-                            Field {
-                                attrs: arg.attrs.clone(),
-                                vis: Visibility::Inherited,
-                                ident: None,
-                                colon_token: Some(arg.colon_token),
-                                ty: (*arg.ty).clone(),
-                            },
-                            punct.cloned(),
-                        )
-                    })),
-                })
-            },
-            discriminant: None,
+        variants: Punctuated::from_iter(input.states.iter().map(|s| {
+            Variant {
+                attrs: s
+                    .attrs
+                    .iter()
+                    .filter_map(|a| (a.path == doc_path).then_some(a).cloned())
+                    .collect_vec(),
+                ident: ident_to_case(&s.ident, Case::Pascal),
+                fields: if s.args.is_empty() {
+                    Fields::Unit
+                } else {
+                    Fields::Unnamed(FieldsUnnamed {
+                        paren_token: Paren::default(),
+                        unnamed: Punctuated::from_iter(s.args.pairs().map(|p| {
+                            let (arg, punct) = p.into_tuple();
+                            Pair::new(
+                                Field {
+                                    attrs: arg.attrs.clone(),
+                                    vis: Visibility::Inherited,
+                                    ident: None,
+                                    colon_token: Some(arg.colon_token),
+                                    ty: (*arg.ty).clone(),
+                                },
+                                punct.cloned(),
+                            )
+                        })),
+                    })
+                },
+                discriminant: None,
+            }
         })),
     }
 }
@@ -245,7 +265,7 @@ fn gen_impl(
         })
     };
 
-    let initial_state = &init.state;
+    let initial_state = ident_to_case(&init.state, Case::Pascal);
     let initial_state = parse_quote!(#state_ident::#initial_state);
     let state_init = if let Some(paren) = &init.paren_token {
         Expr::Call(ExprCall {
@@ -278,6 +298,7 @@ fn gen_impl(
                      body,
                      ..
                  }| {
+                    let ident = ident_to_case(ident, Case::Pascal);
                     let path = parse_quote!(#state_ident::#ident);
                     let refs = refs.content.iter();
                     let result_type = if let ReturnType::Type(_, ty) = return_type {
@@ -401,7 +422,7 @@ fn gen_impl(
                     move || loop {
                         run(&data__, &mut vars__);
                     },
-                );
+                ).unwrap();
                 self__
             }},
         })],
