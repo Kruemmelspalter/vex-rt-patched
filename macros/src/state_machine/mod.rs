@@ -333,7 +333,7 @@ fn gen_impl(
                         guard: None,
                         fat_arrow_token: Default::default(),
                         body: parse_quote! {{
-                            let #ctx = ctx__;
+                            let #ctx = ctx__.clone();
                             let #vars_ident {
                                 #(#refs,)*
                                 ..
@@ -367,6 +367,7 @@ fn gen_impl(
         block: parse_quote! {{
             let (state__, ctx__) = data__.lock().begin();
             #state_match
+            #crate_::rtos::select(ctx__.done());
         }},
     };
 
