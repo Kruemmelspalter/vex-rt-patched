@@ -53,9 +53,6 @@ pub fn make_state_machine(input: Input) -> TokenStream {
         empty(),
     );
 
-    println!("{:#?}", vars_generics);
-    println!("{:#?}", state_generics);
-
     let vars_generics_args = generics_as_args(&vars_generics);
     let state_generics_args = generics_as_args(&state_generics);
     let main_generics_args = generics_as_args(&main_generics);

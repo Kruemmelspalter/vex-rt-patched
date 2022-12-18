@@ -1,6 +1,6 @@
 //! For use with the [`entry!`](crate::entry!) macro.
 
-use crate::{io::println, peripherals::Peripherals, rtos::Context, state_machine2};
+use crate::{io::println, peripherals::Peripherals, rtos::Context, state_machine};
 
 /// A trait representing a competition-ready VEX Robot.
 pub trait Robot: Send + Sync + 'static {
@@ -35,7 +35,7 @@ pub trait Robot: Send + Sync + 'static {
     }
 }
 
-state_machine2! {
+state_machine! {
     /// Competition state machine.
     pub Competition<R: Robot>(robot: R) {
         robot: R = robot,

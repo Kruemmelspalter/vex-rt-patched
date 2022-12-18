@@ -2,7 +2,7 @@
 #![no_main]
 
 use core::time::Duration;
-use vex_rt::{prelude::*, state_machine2};
+use vex_rt::{prelude::*, state_machine};
 use vex_rt_macros::make_state_machine;
 
 struct DriveTrain {
@@ -44,7 +44,7 @@ impl DriveTrain {
 //     }
 // }
 
-state_machine2! {
+state_machine! {
     /// Test
     Drive(drive: DriveTrain) {
         drive: DriveTrain = drive,
