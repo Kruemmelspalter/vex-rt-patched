@@ -70,6 +70,8 @@ state_machine! {
     }
 
     /// Drives forward a set amount.
+    ///
+    /// Returns whether the movement completed successfully.
     auto_drive(ctx, distance: f64) [drive] -> bool {
         drive.drive_distance(distance, ctx).unwrap_or_else(|err| {
             eprintln!("drive error: {:?}", err);
@@ -101,6 +103,7 @@ impl Robot for Bot {
     }
 
     fn autonomous(&mut self, ctx: Context) {
+        // Tells the drive to move a given distance, with a time limit of 1 second.
         let auto = self
             .drive
             .auto_drive_ext(ctx.fork_with_timeout(Duration::from_secs(1)), 100.0);
