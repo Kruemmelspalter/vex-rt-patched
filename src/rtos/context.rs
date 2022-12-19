@@ -237,6 +237,17 @@ impl ContextWrapper {
         self.0 = Some(ctx.clone());
         ctx
     }
+
+    /// Cancels the last context, creating a new context as a child of the given
+    /// context in its place.
+    pub fn replace_ext(&mut self, ctx: impl ParentContext) -> Context {
+        if let Some(ctx) = self.0.take() {
+            ctx.cancel();
+        }
+        let ctx = ctx.fork();
+        self.0 = Some(ctx.clone());
+        ctx
+    }
 }
 
 impl Default for ContextWrapper {

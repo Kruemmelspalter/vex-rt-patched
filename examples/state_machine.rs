@@ -101,7 +101,10 @@ impl Robot for Bot {
     }
 
     fn autonomous(&mut self, ctx: Context) {
-        let auto = self.drive.auto_drive(100.0);
+        let auto = self
+            .drive
+            .auto_drive_ext(ctx.fork_with_timeout(Duration::from_secs(1)), 100.0);
+
         select! {
             success = auto.done() => if *success {
                 println!("success");

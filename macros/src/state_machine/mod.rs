@@ -10,9 +10,9 @@ use syn::{
     token::{Brace, Enum, Paren, Semi, Struct},
     Arm, Attribute, Expr, ExprCall, ExprMatch, ExprPath, ExprStruct, Field, FieldValue, Fields,
     FieldsNamed, FieldsUnnamed, FnArg, Generics, Ident, ImplItem, ImplItemMethod, ImplItemType,
-    ItemEnum, ItemFn, ItemImpl, ItemStruct, Member, Pat, PatTuple, PatTupleStruct, Path,
-    PathArguments, PathSegment, Receiver, ReturnType, Signature, Type, TypePath, Variant,
-    Visibility,
+    ItemEnum, ItemFn, ItemImpl, ItemStruct, Member, Pat, PatIdent, PatTuple, PatTupleStruct,
+    PatType, Path, PathArguments, PathSegment, Receiver, ReturnType, Signature, Type, TypePath,
+    Variant, Visibility,
 };
 
 use crate::util::{filter_generics, generics_as_args, ident_append, ident_to_case};
@@ -417,6 +417,7 @@ fn gen_impl(
 
     for s in states {
         let pascal_ident = ident_to_case(&s.ident, Case::Pascal);
+        let ctx = &s.ctx;
         let args = if s.args.is_empty() {
             quote!()
         } else {
@@ -475,6 +476,73 @@ fn gen_impl(
                 let state__ = #state_ident::#pascal_ident #args;
                 let mut lock__ = self.0.lock();
                 lock__.transition(state__);
+                lock__.listen::<#ty>()
+            }},
+        }));
+
+        items.push(ImplItem::Method(ImplItemMethod {
+            attrs: s.attrs.clone(),
+            vis: parse_quote!(pub),
+            defaultness: None,
+            sig: Signature {
+                constness: None,
+                asyncness: None,
+                unsafety: None,
+                abi: None,
+                fn_token: Default::default(),
+                ident: ident_append(&s.ident, "_ext"),
+                generics: Default::default(),
+                paren_token: s.paren_token,
+                inputs: Punctuated::from_iter(
+                    [
+                        Pair::Punctuated(
+                            FnArg::Receiver(Receiver {
+                                attrs: Vec::new(),
+                                reference: Some(Default::default()),
+                                mutability: None,
+                                self_token: Default::default(),
+                            }),
+                            Default::default(),
+                        ),
+                        Pair::Punctuated(
+                            FnArg::Typed(PatType {
+                                attrs: Vec::new(),
+                                pat: Box::new(Pat::Ident(PatIdent {
+                                    attrs: Vec::new(),
+                                    by_ref: None,
+                                    mutability: None,
+                                    ident: s.ctx.clone(),
+                                    subpat: None,
+                                })),
+                                colon_token: Default::default(),
+                                ty: parse_quote!(#crate_::rtos::Context),
+                            }),
+                            Default::default(),
+                        ),
+                    ]
+                    .into_iter()
+                    .chain(s.args.pairs().map(|p| {
+                        let (arg, punct) = p.into_tuple();
+                        Pair::new(FnArg::Typed(arg.clone()), punct.cloned())
+                    })),
+                ),
+                variadic: None,
+                output: if let ReturnType::Type(arrow, ty) = &s.return_type {
+                    ReturnType::Type(*arrow, parse_quote!(#promise<#ty>))
+                } else {
+                    ReturnType::Type(
+                        Default::default(),
+                        Box::new(Type::Path(TypePath {
+                            qself: None,
+                            path: promise.clone(),
+                        })),
+                    )
+                },
+            },
+            block: parse_quote! {{
+                let state__ = #state_ident::#pascal_ident #args;
+                let mut lock__ = self.0.lock();
+                lock__.transition_ext(#ctx, state__);
                 lock__.listen::<#ty>()
             }},
         }))

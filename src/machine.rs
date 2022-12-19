@@ -59,12 +59,21 @@ impl<S: Clone> StateMachineData<S> {
         )
     }
 
-    /// Instructs a transition to a new state. Returns the context under which
-    /// that state will execute.
+    /// Instructs a transition to a new state.
+    ///
+    /// Returns the context under which that state will execute.
     pub fn transition(&mut self, state: S) -> Context {
         self.state = state;
         self.listener.clear();
         self.ctxw.replace()
+    }
+
+    /// Instructs a transition to a new state, given a parent context to limit
+    /// the execution of the state body.
+    pub fn transition_ext(&mut self, ctx: Context, state: S) -> Context {
+        self.state = state;
+        self.listener.clear();
+        self.ctxw.replace_ext(ctx)
     }
 
     /// Produces a promise which listens for the result of the current state.
