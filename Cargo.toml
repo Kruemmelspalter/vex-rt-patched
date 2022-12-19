@@ -37,3 +37,4 @@ zip-extensions = "0.6.0"
 [dev-dependencies]
 array-init = "2.0.0"
 itertools = { version = "0.10.0", default-features = false, features = ["use_alloc"] }
+num-traits = { version = "0.2.15", default-features = false }

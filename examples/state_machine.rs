@@ -1,7 +1,11 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
+use alloc::sync::Arc;
 use core::time::Duration;
+use num_traits::float::FloatCore;
 use vex_rt::{prelude::*, state_machine};
 
 struct DriveTrain {
@@ -16,32 +20,31 @@ impl DriveTrain {
     // could exceed 127 and be over the limit of an i8.
     // So we catch those cases and bring them back within bounds.
     fn drive(&mut self, x: i8, y: i8) -> Result<(), MotorError> {
-        let left: i8 = match y as i16 + x as i16 {
-            v if v < -127 => -127,
-            v if v > 127 => 127,
-            v => v as i8,
-        };
-        let right: i8 = match y as i16 - x as i16 {
-            v if v < -127 => -127,
-            v if v > 127 => 127,
-            v => v as i8,
-        };
+        let left = (y as i16 + x as i16).clamp(-127, 127) as i8;
+        let right = (y as i16 - x as i16).clamp(-127, 127) as i8;
         self.left.move_i8(left)?;
-        self.right.move_i8(right)
+        self.right.move_i8(right)?;
+        Ok(())
+    }
+
+    fn drive_distance(&mut self, distance: f64, ctx: Context) -> Result<bool, MotorError> {
+        self.left.move_relative(distance, 100)?;
+        self.right.move_relative(distance, 100)?;
+
+        let mut pause = Loop::new(Duration::from_millis(10));
+
+        while (self.left.get_position()? - self.left.get_target_position()?).abs() >= 1.0
+            || (self.right.get_position()? - self.right.get_target_position()?).abs() >= 1.0
+        {
+            select! {
+                _ = ctx.done() => return Ok(false),
+                _ = pause.select() => continue,
+            };
+        }
+
+        Ok(true)
     }
 }
-
-// mod drive_state_machine {
-//     vex_rt::state_machine! {
-//         pub Drive(drive: super::DriveTrain) {
-//             drive: super::DriveTrain = drive,
-//         } = idle();
-
-//         idle(ctx) [drive] {
-//             drive.drive(0, 0).unwrap();
-//         }
-//     }
-// }
 
 state_machine! {
     /// Test
@@ -53,27 +56,38 @@ state_machine! {
     idle(_ctx) [drive] {
         drive.drive(0, 0).unwrap();
     }
+
+    /// Manual control state.
+    manual(ctx, controller: Arc<ControllerBroadcast>) [drive] {
+        let mut l = controller.listen();
+
+        loop {
+            select! {
+                _ = ctx.done() => break,
+                data = l.select() => drive.drive(data.left_x, data.left_y).unwrap(),
+            };
+        }
+    }
+
+    /// Drives forward a set amount.
+    auto_drive(ctx, distance: f64) [drive] -> bool {
+        drive.drive_distance(distance, ctx).unwrap_or_else(|err| {
+            eprintln!("drive error: {:?}", err);
+            false
+        })
+    }
 }
 
 struct Bot {
-    controller: Controller,
-    drivetrain: Drive,
-}
-
-impl Bot {
-    // Waits for access to the drivetrain, then passes
-    // its arguments to the drive method of the drivetrain.
-    fn drive(&self, _x: i8, _y: i8) -> Result<(), MotorError> {
-        // self.drivetrain.lock().drive(x, y)
-        Ok(())
-    }
+    controller: Arc<ControllerBroadcast>,
+    drive: Drive,
 }
 
 impl Robot for Bot {
     fn new(p: Peripherals) -> Self {
         Bot {
-            controller: p.master_controller,
-            drivetrain: Drive::new(DriveTrain {
+            controller: Arc::new(p.master_controller.into_broadcast()),
+            drive: Drive::new(DriveTrain {
                 left: p
                     .port01
                     .into_motor(Gearset::EighteenToOne, EncoderUnits::Degrees, false)
@@ -86,25 +100,28 @@ impl Robot for Bot {
         }
     }
 
+    fn autonomous(&mut self, ctx: Context) {
+        let auto = self.drive.auto_drive(100.0);
+        select! {
+            success = auto.done() => if *success {
+                println!("success");
+            } else {
+                println!("failed");
+            },
+            _ = ctx.done() => {},
+        }
+    }
+
     // This function will get invoked when the robot is placed
     // under operator control.
     fn opcontrol(&mut self, ctx: Context) {
         let mut pause = Loop::new(Duration::from_millis(100));
 
+        self.drive.manual(self.controller.clone());
+
         // We will run a loop to check controls on the controller and
         // perform appropriate actions.
         loop {
-            // Each time through the loop we read the right joystick and
-            // feed its x and y values to the drivetrain.
-            // The joytick is spring-loaded to return to 0 so the robot
-            // will stop unless the operator intervenes. The further the
-            // joystick is from 0, the faster robot will move.
-            self.drive(
-                self.controller.right_stick.get_x().unwrap(),
-                self.controller.right_stick.get_y().unwrap(),
-            )
-            .expect("Drivetrain error");
-
             // At the end of each loop pause.select() will pause for 100 ms,
             // then generate a selectable event. ctx.done() will also generate
             // a selectable event if the opcontrol period has ended. If
@@ -112,13 +129,13 @@ impl Robot for Bot {
             // we will exit the loop.
             select! {
                 _ = ctx.done() => break,
-                _ = pause.select() => continue
-            }
+                _ = pause.select() => self.controller.broadcast_update().unwrap(),
+            };
         }
     }
 
     fn disabled(&mut self, _ctx: Context) {
-        self.drivetrain.idle();
+        self.drive.idle();
     }
 }
 
