@@ -40,8 +40,8 @@ macro_rules! select_head {
     ($event:expr $(; $sub:pat = $dep:expr)* ;;) => {
         $crate::select_init!($event $(; $sub = $dep)*)
     };
-    ($event:expr $(; $sub:pat = $dep:expr)* ;; $($rest:tt ;;)+) => {
-        ($crate::select_init!($event $(; $sub = $dep)*), $crate::select_head!($($rest ;;)*))
+    ($event:expr $(; $sub1:pat = $dep1:expr)* ;; $($rest:expr $(; $sub:pat = $dep:expr)* ;;)+) => {
+        ($crate::select_init!($event $(; $sub1 = $dep1)*), $crate::select_head!($($rest $(; $sub = $dep)* ;;)*))
     };
 }
 
