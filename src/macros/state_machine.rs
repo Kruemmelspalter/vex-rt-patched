@@ -2,10 +2,11 @@
 /// Creates an asynchronous state machine with the given visibility, name and
 /// state definitions.
 ///
+/// # Usage
 /// The syntax consists of a state machine definition followed by one or more
 /// state definitions. The state machine definition has the syntax:
 /// ```text
-/// <visibility> <TypeName>(<generics>)? (<parethesized_parameter_list>)? ({
+/// <visibility> <TypeName>(<generics>)? (<parenthesized_parameter_list>)? ({
 ///     (<field_definition> = <initializer>),*
 /// })? = <initial_state>;
 /// ```
@@ -38,6 +39,20 @@
 /// `()` if omitted, as with ordinary functions; and `<body>` is the function
 /// body which implements the state behaviour, for which the state parameters
 /// and field patterns are in scope.
+///
+/// The macro generates two types with the configured `<visibility>`: a `struct
+/// <TypeName>`, an instance of which is an actual state machine, and an `enum
+/// <TypeName>State`, a value of which is a possible state of the state machine
+/// (including arguments).
+///
+/// The state machine `struct` is given a method `new` with the parameters from
+/// the state machine definition, as well as a method for each state, taking a
+/// [`Context`](crate::rtos::Context) as well as the parameters of that state.
+/// The `new` method constructs a new state machine according to the field
+/// initializers and initial state given in the definition, while the state
+/// methods transition an existing state machine to the given state. An
+/// implementation of the [`StateMachine`](crate::machine::StateMachine) trait
+/// is also provided for the `struct`.
 macro_rules! state_machine {
     ($($args:tt)*) => {
         $crate::macros::make_state_machine!($crate; $($args)*);
