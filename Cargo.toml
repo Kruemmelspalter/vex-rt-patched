@@ -10,7 +10,7 @@ authors = [
 edition = "2021"
 build = "build/main.rs"
 description = "A Rust runtime for the Vex V5 built on top of PROS."
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://gitlab.com/qvex/vex-rt"
 
 [workspace]

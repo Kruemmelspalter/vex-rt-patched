@@ -1,6 +1,7 @@
 use std::{iter::empty, ops::Deref};
 
 use convert_case::Case;
+use generics_util::{filter_generics, generics_as_args};
 use itertools::Itertools;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
@@ -15,7 +16,7 @@ use syn::{
     Variant, Visibility,
 };
 
-use crate::util::{filter_generics, generics_as_args, ident_append, ident_to_case};
+use crate::util::{ident_append, ident_to_case};
 
 use self::input::{Input, State};
 

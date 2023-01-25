@@ -2,13 +2,15 @@
 name = "vex-rt-macros"
 version = "0.1.0"
 edition = "2021"
+description = "Internal macros library for the vex-rt crate."
+license = "Apache-2.0"
 
 [lib]
 proc-macro = true
 
 [dependencies]
 convert_case = "0.6.0"
-im = "15.1.0"
+generics-util = "0.1.0"
 itertools = "0.10.5"
 proc-macro2 = "1.0"
 quote = "1.0"
