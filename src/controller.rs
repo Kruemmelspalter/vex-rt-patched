@@ -134,7 +134,7 @@ impl Controller {
         }
     }
 
-    /// Gets the battery level of the controller
+    /// Gets the battery level of the controller.
     pub fn get_battery_level(&self) -> Result<i32, ControllerError> {
         match unsafe { bindings::controller_get_battery_level(self.id) } {
             bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
@@ -142,7 +142,7 @@ impl Controller {
         }
     }
 
-    /// Gets the battery level of the controller
+    /// Gets the battery capacity of the controller.
     pub fn get_battery_capacity(&self) -> Result<i32, ControllerError> {
         match unsafe { bindings::controller_get_battery_capacity(self.id) } {
             bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
@@ -177,6 +177,8 @@ impl Controller {
             y: self.y.is_pressed()?,
             a: self.a.is_pressed()?,
             b: self.b.is_pressed()?,
+            battery_level: self.get_battery_level()?,
+            battery_capacity: self.get_battery_capacity()?,
         })
     }
 }
@@ -239,6 +241,10 @@ pub struct ControllerData {
     pub a: bool,
     /// The "B" button.
     pub b: bool,
+    /// The battery level of the controller.
+    pub battery_level: i32,
+    /// The battery capacity of the controller.
+    pub battery_capacity: i32,
 }
 
 /// Represents one of two analog sticks on a Vex controller.
