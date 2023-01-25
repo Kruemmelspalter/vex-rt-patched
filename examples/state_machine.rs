@@ -54,7 +54,9 @@ state_machine! {
 
     /// Idle state.
     idle(_ctx) [drive] {
-        drive.drive(0, 0).unwrap();
+        drive.drive(0, 0).unwrap_or_else(|err| {
+            eprintln!("idle drive error: {:?}", err);
+        });
     }
 
     /// Manual control state.
@@ -64,7 +66,9 @@ state_machine! {
         loop {
             select! {
                 _ = ctx.done() => break,
-                data = l.select() => drive.drive(data.left_x, data.left_y).unwrap(),
+                data = l.select() => drive.drive(data.left_x, data.left_y).unwrap_or_else(|err| {
+                    eprintln!("manual drive error: {:?}", err);
+                }),
             };
         }
     }
@@ -74,7 +78,7 @@ state_machine! {
     /// Returns whether the movement completed successfully.
     auto_drive(ctx, distance: f64) [drive] -> bool {
         drive.drive_distance(distance, ctx).unwrap_or_else(|err| {
-            eprintln!("drive error: {:?}", err);
+            eprintln!("auto drive error: {:?}", err);
             false
         })
     }
