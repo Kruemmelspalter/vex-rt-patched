@@ -10,7 +10,8 @@ impl Robot for DelayBot {
     fn new(_peripherals: Peripherals) -> Self {
         Self
     }
-    fn opcontrol(&'static self, _ctx: Context) {
+
+    fn opcontrol(&mut self, _ctx: Context) {
         let x: u32 = 0;
         loop {
             println!("x = {}", x);

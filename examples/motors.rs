@@ -31,34 +31,31 @@ impl DriveTrain {
     }
 }
 
-struct ClawBot {
-    drive_train: Mutex<DriveTrain>,
+struct MotorsBot {
+    drive_train: DriveTrain,
 }
 
-impl Robot for ClawBot {
+impl Robot for MotorsBot {
     fn new(peripherals: Peripherals) -> Self {
         Self {
-            drive_train: Mutex::new(DriveTrain::new(peripherals.port01, peripherals.port02)),
+            drive_train: DriveTrain::new(peripherals.port01, peripherals.port02),
         }
     }
 
-    fn autonomous(&'static self, _ctx: Context) {
+    fn autonomous(&mut self, _ctx: Context) {
         println!("autonomous");
-        let mut drive_train = self.drive_train.lock();
-        drive_train.spin();
+        self.drive_train.spin();
     }
 
-    fn opcontrol(&'static self, _ctx: Context) {
+    fn opcontrol(&mut self, _ctx: Context) {
         println!("opcontrol");
-        let mut drive_train = self.drive_train.lock();
-        drive_train.stop();
+        self.drive_train.stop();
     }
 
-    fn disabled(&'static self, _ctx: Context) {
+    fn disabled(&mut self, _ctx: Context) {
         println!("disabled");
-        let mut drive_train = self.drive_train.lock();
-        drive_train.stop();
+        self.drive_train.stop();
     }
 }
 
-entry!(ClawBot);
+entry!(MotorsBot);

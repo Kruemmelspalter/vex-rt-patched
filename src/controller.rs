@@ -9,6 +9,7 @@ use crate::{
     error::{get_errno, Error},
     io::eprintln,
     rtos::{delay_until, queue, time_since_start, SendQueue, Task},
+    rtos::{Broadcast, BroadcastListener},
     select,
 };
 
@@ -133,7 +134,7 @@ impl Controller {
         }
     }
 
-    /// Gets the battery level of the controller
+    /// Gets the battery level of the controller.
     pub fn get_battery_level(&self) -> Result<i32, ControllerError> {
         match unsafe { bindings::controller_get_battery_level(self.id) } {
             bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
@@ -141,13 +142,109 @@ impl Controller {
         }
     }
 
-    /// Gets the battery level of the controller
+    /// Gets the battery capacity of the controller.
     pub fn get_battery_capacity(&self) -> Result<i32, ControllerError> {
         match unsafe { bindings::controller_get_battery_capacity(self.id) } {
             bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
             x => Ok(x),
         }
     }
+
+    /// Converts `self` into a [`ControllerBroadcast`].
+    pub fn into_broadcast(self) -> ControllerBroadcast {
+        ControllerBroadcast {
+            controller: self,
+            bcast: Broadcast::new(ControllerData::default()),
+        }
+    }
+
+    /// Reads data from all controller inputs.
+    pub fn read(&self) -> Result<ControllerData, ControllerError> {
+        Ok(ControllerData {
+            left_x: self.left_stick.get_x()?,
+            left_y: self.left_stick.get_y()?,
+            right_x: self.right_stick.get_x()?,
+            right_y: self.right_stick.get_y()?,
+            l1: self.l1.is_pressed()?,
+            l2: self.l2.is_pressed()?,
+            r1: self.r1.is_pressed()?,
+            r2: self.r2.is_pressed()?,
+            up: self.up.is_pressed()?,
+            down: self.down.is_pressed()?,
+            left: self.left.is_pressed()?,
+            right: self.right.is_pressed()?,
+            x: self.x.is_pressed()?,
+            y: self.y.is_pressed()?,
+            a: self.a.is_pressed()?,
+            b: self.b.is_pressed()?,
+            battery_level: self.get_battery_level()?,
+            battery_capacity: self.get_battery_capacity()?,
+        })
+    }
+}
+
+/// Wraps a [`Broadcast`] instance which broadcasts controller data.
+pub struct ControllerBroadcast {
+    controller: Controller,
+    bcast: Broadcast<ControllerData>,
+}
+
+impl ControllerBroadcast {
+    /// Reads the latest data from the controller and broadcasts it to all
+    /// listeners.
+    ///
+    /// Returns a copy of the data which was read.
+    pub fn broadcast_update(&self) -> Result<ControllerData, ControllerError> {
+        let data = self.controller.read()?;
+        self.bcast.publish(data);
+        Ok(data)
+    }
+
+    /// Creates a new listener for the broadcast event.
+    pub fn listen(&self) -> BroadcastListener<'_, ControllerData> {
+        self.bcast.listen()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Describes data from all controller inputs.
+pub struct ControllerData {
+    /// The x-axis of the left analog stick.
+    pub left_x: i8,
+    /// The y-axis of the left analog stick.
+    pub left_y: i8,
+    /// The x-axis of the right analog stick.
+    pub right_x: i8,
+    /// The y-axis of the right analog stick.
+    pub right_y: i8,
+    /// The top-left shoulder button.
+    pub l1: bool,
+    /// The bottom-left shoulder button.
+    pub l2: bool,
+    /// The top-right shoulder button.
+    pub r1: bool,
+    /// The bottom-right shoulder button.
+    pub r2: bool,
+    /// The up directional button.
+    pub up: bool,
+    /// The down directional button.
+    pub down: bool,
+    /// The left directional button.
+    pub left: bool,
+    /// The right directional button.
+    pub right: bool,
+    /// The "X" button.
+    pub x: bool,
+    /// The "Y" button.
+    pub y: bool,
+    /// The "A" button.
+    pub a: bool,
+    /// The "B" button.
+    pub b: bool,
+    /// The battery level of the controller.
+    pub battery_level: i32,
+    /// The battery capacity of the controller.
+    pub battery_capacity: i32,
 }
 
 /// Represents one of two analog sticks on a Vex controller.

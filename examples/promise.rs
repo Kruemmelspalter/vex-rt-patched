@@ -4,13 +4,14 @@
 use core::time::Duration;
 use vex_rt::prelude::*;
 
-struct TaskBot;
+struct PromiseBot;
 
-impl Robot for TaskBot {
+impl Robot for PromiseBot {
     fn new(_peripherals: Peripherals) -> Self {
-        TaskBot
+        PromiseBot
     }
-    fn opcontrol(&'static self, _ctx: Context) {
+
+    fn opcontrol(&mut self, _ctx: Context) {
         println!("opcontrol");
         let promise = Promise::spawn(|| {
             Task::delay(Duration::from_secs(1));
@@ -25,4 +26,4 @@ impl Robot for TaskBot {
     }
 }
 
-entry!(TaskBot);
+entry!(PromiseBot);
