@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+use alloc::format;
 use core::time::Duration;
 use vex_rt::prelude::*;
 
@@ -42,21 +44,26 @@ impl Robot for ControllerBot {
         let mut l = Loop::new(Duration::from_millis(10));
 
         loop {
+            let velocity = self.controller.left_stick.get_x().unwrap();
+            self.controller
+                .screen
+                .print(0, 0, &format!("Vel: {:<4}", velocity));
+            self.drive_train.spin(velocity);
+
             select! {
                 _ = ctx.done() => break,
-                _ = l.select() => {
-                    let velocity = self.controller.left_stick.get_x().unwrap();
-                    self.drive_train.spin(velocity);
-                },
+                _ = l.select() => continue,
             }
         }
     }
 
     fn disabled(&mut self, _ctx: Context) {
         self.drive_train.spin(0);
+        self.controller.screen.clear();
     }
 
     fn initialize(&mut self, _ctx: Context) {
+        self.controller.screen.clear();
         println!("level: {}", self.controller.get_battery_level().unwrap());
         println!(
             "capacity: {}",

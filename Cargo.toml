@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "0.13.0"
+version = "0.14.0"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
@@ -17,7 +17,7 @@ repository = "https://gitlab.com/qvex/vex-rt"
 members = ["macros"]
 
 [dependencies]
-libc = { version = "0.2", default-features = false }
+libc = { version = "0.2.137", default-features = false }
 libc-print = "0.1.14"
 rcstring = "0.2.1"
 spin = "0.9.0"
@@ -27,6 +27,7 @@ by_address = "1.0.4"
 owner-monad = "0.1.0"
 raii-map = "0.1.0"
 queue-model = "0.1.2"
+slice-copy = "0.3.0"
 vex-rt-macros = { path = "macros" }
 
 [build-dependencies]

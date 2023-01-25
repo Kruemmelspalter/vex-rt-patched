@@ -24,10 +24,15 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "battery_get_current",
     "battery_get_temperature",
     "battery_get_voltage",
+    "controller_clear",
+    "controller_clear_line",
     "controller_get_analog",
     "controller_get_battery_capacity",
     "controller_get_battery_level",
     "controller_get_digital",
+    "controller_is_connected",
+    "controller_rumble",
+    "controller_set_text",
     "distance_get",
     "distance_get_confidence",
     "distance_get_object_size",
@@ -156,6 +161,7 @@ const WHITELISTED_VARS: &[&str] = &[
     "PROS_ERR_",
     "PROS_ERR_F_",
     "TASK_PRIORITY_DEFAULT",
+    "TASK_PRIORITY_MAX",
     "TASK_STACK_DEPTH_DEFAULT",
 ];
 
