@@ -3,6 +3,7 @@
 use crate::{
     bindings,
     error::{get_errno, Error},
+    rtos::DataSource,
 };
 
 /// A struct which represents a V5 smart port configured as a rotation sensor.
@@ -52,7 +53,7 @@ impl RotationSensor {
         }
     }
 
-    /// Get the Rotation Sensor’s current position in centidegrees
+    /// Get the Rotation Sensor’s current position in centidegrees.
     pub fn get_position(&self) -> Result<i32, RotationSensorError> {
         match unsafe { bindings::rotation_get_position(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
@@ -60,7 +61,7 @@ impl RotationSensor {
         }
     }
 
-    /// Get the Rotation Sensor’s current velocity in centidegrees per second
+    /// Get the Rotation Sensor’s current velocity in centidegrees per second.
     pub fn get_velocity(&self) -> Result<i32, RotationSensorError> {
         match unsafe { bindings::rotation_get_velocity(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
@@ -68,7 +69,7 @@ impl RotationSensor {
         }
     }
 
-    /// Get the Rotation Sensor’s current angle in centidegrees (0-36000)
+    /// Get the Rotation Sensor’s current angle in centidegrees (0-36000).
     pub fn get_angle(&self) -> Result<i32, RotationSensorError> {
         match unsafe { bindings::rotation_get_angle(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
@@ -76,7 +77,7 @@ impl RotationSensor {
         }
     }
 
-    /// Set the rotation direction of the sensor
+    /// Set the rotation direction of the sensor.
     pub fn set_reversed(&mut self, reverse: bool) -> Result<(), RotationSensorError> {
         match unsafe { bindings::rotation_set_reversed(self.port, reverse) } {
             bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
@@ -84,7 +85,7 @@ impl RotationSensor {
         }
     }
 
-    /// Reverses the rotational sensor’s direction
+    /// Reverses the rotational sensor’s direction.
     pub fn reverse(&mut self) -> Result<(), RotationSensorError> {
         match unsafe { bindings::rotation_reverse(self.port) } {
             bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
@@ -92,13 +93,38 @@ impl RotationSensor {
         }
     }
 
-    /// Get the Rotation Sensor’s reversed flag
+    /// Get the Rotation Sensor’s reversed flag.
     pub fn get_reversed(&self) -> Result<bool, RotationSensorError> {
         match unsafe { bindings::rotation_get_reversed(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
             x => Ok(x != 0),
         }
     }
+}
+
+impl DataSource for RotationSensor {
+    type Data = RotationSensorData;
+
+    type Error = RotationSensorError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        Ok(RotationSensorData {
+            position: self.get_position()?,
+            velocity: self.get_velocity()?,
+            angle: self.get_angle()?,
+        })
+    }
+}
+
+/// Represents the data that can be read from a rotation sensor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RotationSensorData {
+    /// The current position in centidegrees.
+    pub position: i32,
+    /// The current velocity in centidegrees per second.
+    pub velocity: i32,
+    /// The current angle in centidegrees (0-36000).
+    pub angle: i32,
 }
 
 /// Represents possible errors for distance sensor operations.

@@ -1,8 +1,10 @@
-//! # ADI Gyro API.
-
-use crate::bindings;
-use crate::error::{get_errno, Error};
 use alloc::string::ToString;
+
+use crate::{
+    bindings,
+    error::{get_errno, Error},
+    rtos::DataSource,
+};
 
 /// A struct which represents a V5 ADI port configured to be an ADI gyro.
 pub struct AdiGyro {
@@ -51,6 +53,17 @@ impl AdiGyro {
         }
     }
 }
+
+impl DataSource for AdiGyro {
+    type Data = f64;
+
+    type Error = AdiGyroError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        self.get()
+    }
+}
+
 impl Drop for AdiGyro {
     fn drop(&mut self) {
         if let bindings::PROS_ERR_ = unsafe { bindings::ext_adi_gyro_shutdown(self.port) } {

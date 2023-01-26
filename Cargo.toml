@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "0.14.0"
+version = "0.15.0"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",

@@ -1,10 +1,14 @@
 //! # Inertial Sensor API.
 
+use core::fmt;
+
+use alloc::format;
+
 use crate::{
     bindings,
     error::{get_errno, Error},
+    rtos::DataSource,
 };
-use alloc::format;
 
 /// A struct which represents a V5 smart port configured as a inertial sensor.
 pub struct InertialSensor {
@@ -121,7 +125,7 @@ impl InertialSensor {
         }
     }
 
-    /// Get the Inertial Sensor’s raw gyroscope values.
+    /// Get the Inertial Sensor’s raw accelerometer values.
     pub fn get_accel(&self) -> Result<InertialSensorRaw, InertialSensorError> {
         match unsafe { bindings::imu_get_accel(self.port) } {
             x if x.x == bindings::PROS_ERR_F_ => Err(InertialSensorError::from_errno()),
@@ -268,6 +272,37 @@ impl InertialSensor {
     }
 }
 
+impl DataSource for InertialSensor {
+    type Data = InertialSensorData;
+
+    type Error = InertialSensorError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        Ok(InertialSensorData {
+            status: self.get_status()?,
+            quaternion: self.get_quaternion()?,
+            euler: self.get_euler()?,
+            gyro_rate: self.get_gyro_rate()?,
+            accel: self.get_accel()?,
+        })
+    }
+}
+
+/// Represents the data that can be read from an inertial sensor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InertialSensorData {
+    /// The status of the inertial sensor.
+    pub status: InertialSensorStatus,
+    /// The quaternion representing the rotation of the inertial sensor.
+    pub quaternion: InertialSensorQuaternion,
+    /// The Euler angles representing the rotation of the inertial sensor.
+    pub euler: InertialSensorEuler,
+    /// The raw gyroscope values of the inertial sensor.
+    pub gyro_rate: InertialSensorRaw,
+    /// The raw accelerometer values of the inertial sensor.
+    pub accel: InertialSensorRaw,
+}
+
 /// Represents possible errors for inertial sensor operations.
 #[derive(Debug)]
 pub enum InertialSensorError {
@@ -313,6 +348,7 @@ impl From<InertialSensorError> for Error {
 }
 
 /// Represents raw values returned from an inertial sensor.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InertialSensorRaw {
     /// The raw x value returned from the inertial sensor.
     pub x: f64,
@@ -323,6 +359,7 @@ pub struct InertialSensorRaw {
 }
 
 /// Represents a Quaternion returned from an inertial sensor.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InertialSensorQuaternion {
     /// The x value of the Quaternion.
     pub x: f64,
@@ -335,6 +372,7 @@ pub struct InertialSensorQuaternion {
 }
 
 /// Represents the set of euler angles returned from an inertial sensor.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InertialSensorEuler {
     /// The counterclockwise rotation on the y axis.
     pub pitch: f64,
@@ -347,15 +385,25 @@ pub struct InertialSensorEuler {
 #[derive(Clone, Copy, PartialEq, Eq)]
 /// Indicates IMU status.
 pub struct InertialSensorStatus(bindings::imu_status_e);
+
 impl InertialSensorStatus {
     #[inline]
     /// Gets the raw status value.
     pub fn into_raw(self) -> bindings::imu_status_e {
         self.0
     }
+
     #[inline]
     /// Checks whether the status value indicates that the IMU is calibrating.
     pub fn is_calibrating(self) -> bool {
         self.0 & bindings::imu_status_e_E_IMU_STATUS_CALIBRATING != 0
+    }
+}
+
+impl fmt::Debug for InertialSensorStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("InertialSensorStatus")
+            .field("is_calibrating", &self.is_calibrating())
+            .finish()
     }
 }

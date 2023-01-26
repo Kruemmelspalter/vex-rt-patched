@@ -60,13 +60,11 @@ state_machine! {
     }
 
     /// Manual control state.
-    manual(ctx, controller: Arc<ControllerBroadcast>) [drive] {
-        let mut l = controller.listen();
-
+    manual(ctx, mut controller: BroadcastListener<ControllerData>) [drive] {
         loop {
             select! {
                 _ = ctx.done() => break,
-                data = l.select() => drive.drive(data.left_x, data.left_y).unwrap_or_else(|err| {
+                data = controller.select() => drive.drive(data.left_x, data.left_y).unwrap_or_else(|err| {
                     eprintln!("manual drive error: {:?}", err);
                 }),
             };
@@ -85,14 +83,14 @@ state_machine! {
 }
 
 struct Bot {
-    controller: Arc<ControllerBroadcast>,
+    controller: Arc<BroadcastWrapper<Controller>>,
     drive: Drive,
 }
 
 impl Robot for Bot {
     fn new(p: Peripherals) -> Self {
         Bot {
-            controller: Arc::new(p.master_controller.into_broadcast()),
+            controller: Arc::new(p.master_controller.into_broadcast().unwrap()),
             drive: Drive::new(DriveTrain {
                 left: p
                     .port01
@@ -127,7 +125,7 @@ impl Robot for Bot {
     fn opcontrol(&mut self, ctx: Context) {
         let mut pause = Loop::new(Duration::from_millis(100));
 
-        self.drive.manual(self.controller.clone());
+        self.drive.manual(self.controller.listen());
 
         // We will run a loop to check controls on the controller and
         // perform appropriate actions.
@@ -139,7 +137,7 @@ impl Robot for Bot {
             // we will exit the loop.
             select! {
                 _ = ctx.done() => break,
-                _ = pause.select() => self.controller.broadcast_update().unwrap(),
+                _ = pause.select() => self.controller.update().unwrap(),
             };
         }
     }
