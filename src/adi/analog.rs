@@ -1,7 +1,8 @@
-//! # ADI Analog API.
-
-use crate::bindings;
-use crate::error::{get_errno, Error};
+use crate::{
+    bindings,
+    error::{get_errno, Error},
+    rtos::DataSource,
+};
 
 /// A struct which represents a V5 ADI port configured as an ADI analog input.
 pub struct AdiAnalog {
@@ -108,6 +109,16 @@ impl AdiAnalog {
             bindings::PROS_ERR_ => Err(AdiAnalogError::from_errno()),
             x => Ok(x),
         }
+    }
+}
+
+impl DataSource for AdiAnalog {
+    type Data = i32;
+
+    type Error = AdiAnalogError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        self.read()
     }
 }
 

@@ -16,7 +16,7 @@ use syn::{
     Variant, Visibility,
 };
 
-use crate::util::{ident_append, ident_to_case};
+use crate::util::{ident_append, ident_to_case, pat_to_ident};
 
 use self::input::{Input, State};
 
@@ -422,7 +422,11 @@ fn gen_impl(
         let args = if s.args.is_empty() {
             quote!()
         } else {
-            let args = s.args.iter().map(|pat| &*pat.pat);
+            let args = s
+                .args
+                .iter()
+                .enumerate()
+                .map(|(index, pat)| pat_to_ident(&pat.pat, index));
             quote!((#(#args,)*))
         };
         let ty = if let ReturnType::Type(_, ty) = &s.return_type {
@@ -455,9 +459,16 @@ fn gen_impl(
                         Default::default(),
                     )]
                     .into_iter()
-                    .chain(s.args.pairs().map(|p| {
+                    .chain(s.args.pairs().enumerate().map(|(index, p)| {
                         let (arg, punct) = p.into_tuple();
-                        Pair::new(FnArg::Typed(arg.clone()), punct.cloned())
+                        let new_arg = pat_to_ident(&arg.pat, index);
+                        Pair::new(
+                            FnArg::Typed(PatType {
+                                pat: parse_quote!(#new_arg),
+                                ..arg.clone()
+                            }),
+                            punct.cloned(),
+                        )
                     })),
                 ),
                 variadic: None,
@@ -522,9 +533,16 @@ fn gen_impl(
                         ),
                     ]
                     .into_iter()
-                    .chain(s.args.pairs().map(|p| {
+                    .chain(s.args.pairs().enumerate().map(|(index, p)| {
                         let (arg, punct) = p.into_tuple();
-                        Pair::new(FnArg::Typed(arg.clone()), punct.cloned())
+                        let new_arg = pat_to_ident(&arg.pat, index);
+                        Pair::new(
+                            FnArg::Typed(PatType {
+                                pat: parse_quote!(#new_arg),
+                                ..arg.clone()
+                            }),
+                            punct.cloned(),
+                        )
                     })),
                 ),
                 variadic: None,

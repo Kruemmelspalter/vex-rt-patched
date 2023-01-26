@@ -1,15 +1,14 @@
 //! Controller API.
 
 use alloc::collections::VecDeque;
-use core::{convert::TryInto, time::Duration};
+use core::{convert::TryInto, fmt, time::Duration};
 use slice_copy::copy;
 
 use crate::{
     bindings,
     error::{get_errno, Error},
     io::eprintln,
-    rtos::{delay_until, queue, time_since_start, SendQueue, Task},
-    rtos::{Broadcast, BroadcastListener},
+    rtos::{delay_until, queue, time_since_start, DataSource, SendQueue, Task},
     select,
 };
 
@@ -149,17 +148,20 @@ impl Controller {
             x => Ok(x),
         }
     }
+}
 
-    /// Converts `self` into a [`ControllerBroadcast`].
-    pub fn into_broadcast(self) -> ControllerBroadcast {
-        ControllerBroadcast {
-            controller: self,
-            bcast: Broadcast::new(ControllerData::default()),
-        }
+impl fmt::Debug for Controller {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Controller").field("id", &self.id).finish()
     }
+}
 
-    /// Reads data from all controller inputs.
-    pub fn read(&self) -> Result<ControllerData, ControllerError> {
+impl DataSource for Controller {
+    type Data = ControllerData;
+
+    type Error = ControllerError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
         Ok(ControllerData {
             left_x: self.left_stick.get_x()?,
             left_y: self.left_stick.get_y()?,
@@ -180,29 +182,6 @@ impl Controller {
             battery_level: self.get_battery_level()?,
             battery_capacity: self.get_battery_capacity()?,
         })
-    }
-}
-
-/// Wraps a [`Broadcast`] instance which broadcasts controller data.
-pub struct ControllerBroadcast {
-    controller: Controller,
-    bcast: Broadcast<ControllerData>,
-}
-
-impl ControllerBroadcast {
-    /// Reads the latest data from the controller and broadcasts it to all
-    /// listeners.
-    ///
-    /// Returns a copy of the data which was read.
-    pub fn broadcast_update(&self) -> Result<ControllerData, ControllerError> {
-        let data = self.controller.read()?;
-        self.bcast.publish(data);
-        Ok(data)
-    }
-
-    /// Creates a new listener for the broadcast event.
-    pub fn listen(&self) -> BroadcastListener<'_, ControllerData> {
-        self.bcast.listen()
     }
 }
 
