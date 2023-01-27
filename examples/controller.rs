@@ -30,14 +30,8 @@ impl Robot for ControllerBot {
         ControllerBot {
             controller: p.master_controller,
             drive_train: DriveTrain {
-                left_motor: p
-                    .port01
-                    .into_motor(Gearset::EighteenToOne, false)
-                    .unwrap(),
-                right_motor: p
-                    .port02
-                    .into_motor(Gearset::EighteenToOne, true)
-                    .unwrap(),
+                left_motor: p.port01.into_motor(Gearset::EighteenToOne, false).unwrap(),
+                right_motor: p.port02.into_motor(Gearset::EighteenToOne, true).unwrap(),
             },
         }
     }

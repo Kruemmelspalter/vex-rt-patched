@@ -94,24 +94,11 @@ impl Robot for Bot {
         Bot {
             controller: p.master_controller,
             drivetrain: DriveTrain {
-                left: p
-                    .port01
-                    .into_motor(Gearset::EighteenToOne, false)
-                    .unwrap(),
-                right: p
-                    .port10
-                    .into_motor(Gearset::EighteenToOne, true)
-                    .unwrap(),
+                left: p.port01.into_motor(Gearset::EighteenToOne, false).unwrap(),
+                right: p.port10.into_motor(Gearset::EighteenToOne, true).unwrap(),
             },
-            arm: Arm(p
-                .port08
-                .into_motor(Gearset::EighteenToOne, true)
-                .unwrap()),
-            claw: Claw(
-                p.port03
-                    .into_motor(Gearset::EighteenToOne, false)
-                    .unwrap(),
-            ),
+            arm: Arm(p.port08.into_motor(Gearset::EighteenToOne, true).unwrap()),
+            claw: Claw(p.port03.into_motor(Gearset::EighteenToOne, false).unwrap()),
         }
     }
 
