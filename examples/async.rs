@@ -12,7 +12,7 @@ impl Robot for AsyncBot {
         Self
     }
 
-    fn opcontrol(&'static self, ctx: Context) {
+    fn opcontrol(&mut self, ctx: Context) {
         println!("opcontrol");
 
         let dispatcher = launch(ctx.clone());
