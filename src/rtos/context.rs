@@ -15,6 +15,7 @@ use crate::select_merge;
 type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
 
 #[derive(Clone)]
+#[repr(transparent)]
 /// Represents an ongoing operation which could be cancelled in the future.
 /// Inspired by contexts in the Go programming language.
 ///
@@ -221,6 +222,11 @@ impl ContextWrapper {
         Self(None)
     }
 
+    /// Gets the current context, if one exists.
+    pub fn current(&self) -> Option<&Context> {
+        self.0.as_ref()
+    }
+
     /// Cancels the last context, creating a new global context in its place
     /// (which is returned).
     pub fn replace(&mut self) -> Context {
@@ -228,6 +234,17 @@ impl ContextWrapper {
             ctx.cancel();
         }
         let ctx = Context::new_global();
+        self.0 = Some(ctx.clone());
+        ctx
+    }
+
+    /// Cancels the last context, creating a new context as a child of the given
+    /// context in its place.
+    pub fn replace_ext(&mut self, ctx: impl ParentContext) -> Context {
+        if let Some(ctx) = self.0.take() {
+            ctx.cancel();
+        }
+        let ctx = ctx.fork();
         self.0 = Some(ctx.clone());
         ctx
     }

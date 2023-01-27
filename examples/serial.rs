@@ -22,24 +22,22 @@ struct Interface {
 }
 
 struct SerialBot {
-    interface: Mutex<Interface>,
+    interface: Interface,
 }
 
 impl Robot for SerialBot {
     fn new(peripherals: Peripherals) -> Self {
         Self {
-            interface: Mutex::new(Interface {
-                out_port: peripherals.port01.into_serial(BAUDRATES[0]),
-                in_port: peripherals.port02.into_serial(BAUDRATES[0]),
-            }),
+            interface: Interface {
+                out_port: peripherals.port01.into_serial(BAUDRATES[0]).unwrap(),
+                in_port: peripherals.port02.into_serial(BAUDRATES[0]).unwrap(),
+            },
         }
     }
-    fn opcontrol(&'static self, _ctx: Context) {
+
+    fn opcontrol(&mut self, _ctx: Context) {
         // Initialize block to send. Bytes are 00 through FF.
         let block: [u8; 256] = array_init(|i| i as u8);
-
-        // Obtain the serial interface.
-        let mut interface = self.interface.lock();
 
         // Map baudrates to pair of averages.
         let averages = BAUDRATES.map(|rate| {
@@ -47,21 +45,24 @@ impl Robot for SerialBot {
             println!("Baudrate: {}", rate);
 
             // Set both ports to the current baudrate.
-            interface.out_port.set_baudrate(rate).unwrap();
-            interface.in_port.set_baudrate(rate).unwrap();
+            self.interface.out_port.set_baudrate(rate).unwrap();
+            self.interface.in_port.set_baudrate(rate).unwrap();
 
             // Time one byte SINGLE_COUNT times.
             let mut total = Duration::from_millis(0);
             for j in 0..SINGLE_COUNT {
                 // Write byte.
-                interface.out_port.write_byte((j & 0xFF) as u8).unwrap();
+                self.interface
+                    .out_port
+                    .write_byte((j & 0xFF) as u8)
+                    .unwrap();
 
                 // Record current time.
                 let start = time_since_start();
 
                 // Read byte.
-                while interface.in_port.get_read_avail().unwrap() == 0 {}
-                let read = interface.in_port.read_byte().unwrap();
+                while self.interface.in_port.get_read_avail().unwrap() == 0 {}
+                let read = self.interface.in_port.read_byte().unwrap();
 
                 // Compute time delta.
                 let diff = time_since_start() - start;
@@ -81,7 +82,7 @@ impl Robot for SerialBot {
             let mut total = Duration::from_millis(0);
             for j in 0..BLOCK_COUNT {
                 // Write block.
-                interface.out_port.write(&block).unwrap();
+                self.interface.out_port.write(&block).unwrap();
 
                 // Record current time.
                 let start = time_since_start();
@@ -90,7 +91,7 @@ impl Robot for SerialBot {
                 let mut buffer = [0u8; 256];
                 let mut k = 0usize;
                 while k < 256 {
-                    k += interface.in_port.read(&mut buffer[k..256]).unwrap();
+                    k += self.interface.in_port.read(&mut buffer[k..256]).unwrap();
                 }
 
                 // Compute time delta.

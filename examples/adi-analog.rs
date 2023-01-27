@@ -14,7 +14,7 @@ impl Robot for AnalogBot {
             sensor: peripherals.port_g.try_into().unwrap(),
         }
     }
-    fn opcontrol(&'static self, ctx: Context) {
+    fn opcontrol(&mut self, ctx: Context) {
         let mut l = Loop::new(Duration::from_secs(1));
         loop {
             println!("{}", self.sensor.read().unwrap());

@@ -24,7 +24,7 @@ impl Robot for ChannelBot {
         Self { chan: receive }
     }
 
-    fn opcontrol(&'static self, ctx: Context) {
+    fn opcontrol(&mut self, ctx: Context) {
         println!("opcontrol");
         let mut l = Loop::new(Duration::from_millis(750));
         loop {
