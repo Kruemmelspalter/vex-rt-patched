@@ -3,6 +3,7 @@
 use crate::{
     bindings,
     error::{get_errno, Error},
+    rtos::DataSource,
 };
 
 /// A struct which represents a V5 smart port configured as a distance sensor.
@@ -60,6 +61,31 @@ impl DistanceSensor {
             x => Ok(x),
         }
     }
+}
+
+impl DataSource for DistanceSensor {
+    type Data = DistanceData;
+
+    type Error = DistanceSensorError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        Ok(DistanceData {
+            confidence: self.get_confidence()?,
+            size: self.get_object_size()?,
+            velocity: self.get_object_velocity()?,
+        })
+    }
+}
+
+/// Represents the data that can be read from a distance sensor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DistanceData {
+    /// The confidence; see [`DistanceSensor::get_confidence()`] for details.
+    pub confidence: i32,
+    /// The object size; see [`DistanceSensor::get_object_size()`] for details.
+    pub size: i32,
+    /// The object velocity in meters per second.
+    pub velocity: f64,
 }
 
 /// Represents possible errors for distance sensor operations.

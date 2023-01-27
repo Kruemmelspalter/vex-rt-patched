@@ -1,7 +1,6 @@
-//! ADIExpander.
-
-use super::port::AdiPort;
 use crate::bindings;
+
+use super::AdiPort;
 
 /// A struct which represents a V5 ADI expander.
 pub struct AdiExpander {

@@ -10,7 +10,8 @@ impl Robot for SelectRobot {
     fn new(_peripherals: Peripherals) -> Self {
         Self
     }
-    fn autonomous(&'static self, ctx: Context) {
+
+    fn autonomous(&mut self, ctx: Context) {
         println!("autonomous");
         let mut x = 0;
         let mut l = Loop::new(Duration::from_secs(1));

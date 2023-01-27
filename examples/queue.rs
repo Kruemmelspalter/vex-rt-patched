@@ -25,7 +25,8 @@ impl Robot for QueueBot {
         .unwrap();
         Self { chan: receive }
     }
-    fn opcontrol(&'static self, ctx: Context) {
+
+    fn opcontrol(&mut self, ctx: Context) {
         println!("opcontrol");
         loop {
             select! {

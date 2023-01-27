@@ -1,12 +1,13 @@
 //! SmartPort.
 
-use crate::adi::AdiExpander;
-use crate::imu::InertialSensor;
-use crate::prelude::{RotationSensor, RotationSensorError};
 use crate::{
+    adi::AdiExpander,
     bindings,
     distance::DistanceSensor,
-    motor::{EncoderUnits, Gearset, Motor},
+    error::Error,
+    imu::InertialSensor,
+    motor::{EncoderUnits, Gearset, Motor, MotorError},
+    rotation::{RotationSensor, RotationSensorError},
     serial::Serial,
 };
 use core::convert::{TryFrom, TryInto};
@@ -40,30 +41,35 @@ impl SmartPort {
     }
 
     /// Converts a `SmartPort` into a [`Motor`](crate::motor::Motor).
-    pub fn into_motor(self, gearset: Gearset, encoder_units: EncoderUnits, reverse: bool) -> Motor {
-        unsafe { Motor::new(self.port, gearset, encoder_units, reverse) }
+    pub fn into_motor(
+        self,
+        gearset: Gearset,
+        encoder_units: EncoderUnits,
+        reverse: bool,
+    ) -> Result<Motor, MotorError> {
+        (self, gearset, encoder_units, reverse).try_into()
     }
 
     /// Converts a `SmartPort` into a [`Serial`].
-    pub fn into_serial(self, baudrate: i32) -> Serial {
-        unsafe { Serial::new(self.port, baudrate) }
+    pub fn into_serial(self, baudrate: i32) -> Result<Serial, Error> {
+        (self, baudrate).try_into()
     }
 
-    /// Converts a `SmartPort` into a [`AdiExpander`](crate::adi::AdiExpander).
+    /// Converts a `SmartPort` into an [`AdiExpander`](crate::adi::AdiExpander).
     pub fn into_expander(self) -> AdiExpander {
-        unsafe { AdiExpander::new(self.port) }
+        self.into()
     }
 
     /// Converts a `SmartPort` into a
     /// [`DistanceSensor`](crate::distance::DistanceSensor).
     pub fn into_distance(self) -> DistanceSensor {
-        unsafe { DistanceSensor::new(self.port) }
+        self.into()
     }
 
     /// Converts a `SmartPort` into a
     /// [`InertialSensor`](crate::imu::InertialSensor).
     pub fn into_imu(self) -> InertialSensor {
-        unsafe { InertialSensor::new(self.port) }
+        self.into()
     }
 
     /// Converts a `SmartPort` into a
@@ -74,12 +80,47 @@ impl SmartPort {
     }
 }
 
+impl TryFrom<(SmartPort, Gearset, EncoderUnits, bool)> for Motor {
+    type Error = MotorError;
+
+    fn try_from(
+        (port, gearset, encoder_units, reverse): (SmartPort, Gearset, EncoderUnits, bool),
+    ) -> Result<Self, Self::Error> {
+        unsafe { Self::new(port.port, gearset, encoder_units, reverse) }
+    }
+}
+
+impl TryFrom<(SmartPort, i32)> for Serial {
+    type Error = Error;
+
+    fn try_from((port, baudrate): (SmartPort, i32)) -> Result<Self, Self::Error> {
+        unsafe { Self::new(port.port, baudrate) }
+    }
+}
+
+impl From<SmartPort> for AdiExpander {
+    fn from(port: SmartPort) -> Self {
+        unsafe { AdiExpander::new(port.port) }
+    }
+}
+
+impl From<SmartPort> for DistanceSensor {
+    fn from(port: SmartPort) -> Self {
+        unsafe { DistanceSensor::new(port.port) }
+    }
+}
+impl From<SmartPort> for InertialSensor {
+    fn from(port: SmartPort) -> Self {
+        unsafe { InertialSensor::new(port.port) }
+    }
+}
+
 impl TryFrom<(SmartPort, bool)> for RotationSensor {
     type Error = RotationSensorError;
 
     #[inline]
-    fn try_from(port_reversed: (SmartPort, bool)) -> Result<Self, Self::Error> {
-        unsafe { RotationSensor::new(port_reversed.0.port, port_reversed.1) }
+    fn try_from((port, reversed): (SmartPort, bool)) -> Result<Self, Self::Error> {
+        unsafe { RotationSensor::new(port.port, reversed) }
     }
 }
 

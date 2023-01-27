@@ -1,4 +1,4 @@
-//! ADIPort.
+use core::cmp::Ordering;
 
 use super::{
     AdiAnalog, AdiAnalogError, AdiDigitalInput, AdiDigitalInputError, AdiDigitalOutput,
@@ -7,8 +7,6 @@ use super::{
 };
 
 use crate::bindings;
-use core::cmp::Ordering;
-use core::convert::{TryFrom, TryInto};
 
 /// A struct which represents an unconfigured ADI port.
 pub struct AdiPort {
@@ -151,14 +149,8 @@ impl TryFrom<(AdiPort, f64)> for AdiGyro {
     type Error = AdiGyroError;
 
     #[inline]
-    fn try_from(port_multiplier: (AdiPort, f64)) -> Result<Self, Self::Error> {
-        unsafe {
-            AdiGyro::new(
-                port_multiplier.0.port,
-                port_multiplier.1,
-                port_multiplier.0.expander_port,
-            )
-        }
+    fn try_from((port, multiplier): (AdiPort, f64)) -> Result<Self, Self::Error> {
+        unsafe { AdiGyro::new(port.port, multiplier, port.expander_port) }
     }
 }
 
