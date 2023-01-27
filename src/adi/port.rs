@@ -1,4 +1,4 @@
-//! ADIPort.
+use core::cmp::Ordering;
 
 use super::{
     AdiAnalog, AdiAnalogError, AdiDigitalInput, AdiDigitalInputError, AdiDigitalOutput,
@@ -7,8 +7,6 @@ use super::{
 };
 
 use crate::bindings;
-use core::cmp::Ordering;
-use core::convert::{TryFrom, TryInto};
 
 /// A struct which represents an unconfigured ADI port.
 pub struct AdiPort {

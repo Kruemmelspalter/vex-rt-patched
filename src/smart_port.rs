@@ -51,6 +51,7 @@ impl SmartPort {
     }
 
     /// Converts a `SmartPort` into an [`AdiExpander`](crate::adi::AdiExpander).
+    /// Converts a `SmartPort` into an [`AdiExpander`](crate::adi::AdiExpander).
     pub fn into_expander(self) -> AdiExpander {
         self.into()
     }

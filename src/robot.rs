@@ -1,9 +1,9 @@
 //! For use with the [`entry!`](crate::entry!) macro.
 
-use crate::{io::println, peripherals::Peripherals, rtos::Context};
+use crate::{io::println, peripherals::Peripherals, rtos::Context, state_machine};
 
 /// A trait representing a competition-ready VEX Robot.
-pub trait Robot {
+pub trait Robot: Send + Sync + 'static {
     /// Runs at startup, constructing your robot. This should be non-blocking,
     /// since the FreeRTOS scheduler doesn't start until it returns.
     fn new(peripherals: Peripherals) -> Self;
@@ -17,20 +17,47 @@ pub trait Robot {
     /// object is guaranteed to be static (i.e., forever), and so the
     /// implementation may pass references around (e.g., to new tasks) at will
     /// without issue.
-    fn initialize(&'static self, _ctx: Context) {}
+    fn initialize(&mut self, _ctx: Context) {}
 
     /// Runs during the autonomous period.
-    fn autonomous(&'static self, _ctx: Context) {
+    fn autonomous(&mut self, _ctx: Context) {
         println!("autonomous");
     }
 
     /// Runs during the opcontrol period.
-    fn opcontrol(&'static self, _ctx: Context) {
+    fn opcontrol(&mut self, _ctx: Context) {
         println!("opcontrol");
     }
 
     /// Runs when the robot is disabled.
-    fn disabled(&'static self, _ctx: Context) {
+    fn disabled(&mut self, _ctx: Context) {
         println!("disabled");
+    }
+}
+
+state_machine! {
+    /// Competition state machine.
+    pub Competition<R: Robot>(robot: R) {
+        robot: R = robot,
+    } = initialize;
+
+    /// Runs on initialization.
+    initialize(ctx) [robot] {
+        robot.initialize(ctx);
+    }
+
+    /// Runs during the autonomous period.
+    autonomous(ctx) [robot] {
+        robot.autonomous(ctx);
+    }
+
+    /// Runs during the opcontrol period.
+    opcontrol(ctx) [robot] {
+        robot.opcontrol(ctx);
+    }
+
+    /// Runs when the robot is disabled.
+    disabled(ctx) [robot] {
+        robot.disabled(ctx);
     }
 }

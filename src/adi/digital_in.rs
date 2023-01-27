@@ -1,7 +1,8 @@
-//! # ADI Digital Input API.
-
-use crate::bindings;
-use crate::error::{get_errno, Error};
+use crate::{
+    bindings,
+    error::{get_errno, Error},
+    prelude::DataSource,
+};
 
 /// A struct which represents a V5 ADI port configured as an ADI digital input.
 #[derive(Debug)]
@@ -39,6 +40,16 @@ impl AdiDigitalInput {
             0 => Ok(false),
             _ => Ok(true),
         }
+    }
+}
+
+impl DataSource for AdiDigitalInput {
+    type Data = bool;
+
+    type Error = AdiDigitalInputError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        self.read()
     }
 }
 

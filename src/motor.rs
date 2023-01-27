@@ -18,6 +18,7 @@ use uom::si::{
 use crate::{
     bindings,
     error::{get_errno, Error},
+    rtos::DataSource,
 };
 
 /// A struct which represents a V5 smart port configured as a motor.
@@ -37,11 +38,13 @@ impl Motor {
         let mut motor = Self { port };
         motor.set_reversed(reverse)?;
         motor.set_gearing(gearset)?;
-        bindings::motor_set_encoder_units(
+        match bindings::motor_set_encoder_units(
             port,
             bindings::motor_encoder_units_e_E_MOTOR_ENCODER_ROTATIONS,
-        );
-        Ok(motor)
+        ) {
+            bindings::PROS_ERR_ => Err(MotorError::from_errno()),
+            _ => Ok(motor),
+        }
     }
 
     /// Sets the voltage for the motor from -127 to 127.
@@ -384,6 +387,70 @@ impl Motor {
     }
 }
 
+impl DataSource for Motor {
+    type Data = MotorData;
+
+    type Error = MotorError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        Ok(MotorData {
+            target_position: self.get_target_position()?,
+            target_velocity: self.get_target_velocity()?,
+            actual_velocity: self.get_actual_velocity()?,
+            current_draw: self.get_current_draw()?,
+            direction: self.get_direction()?,
+            efficiency: self.get_efficiency()?,
+            position: self.get_position()?,
+            power: self.get_power()?,
+            temperature: self.get_temperature()?,
+            torque: self.get_torque()?,
+            voltage: self.get_voltage()?,
+            over_current: self.is_over_current()?,
+            over_temp: self.is_over_temp()?,
+            brake_mode: self.get_brake_mode()?,
+            current_limit: self.get_current_limit()?,
+            voltage_limit: self.get_voltage_limit()?,
+        })
+    }
+}
+
+/// Represents the data that can be read from a motor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MotorData {
+    /// The target position set for the motor by the user.
+    pub target_position: Angle,
+    /// The velocity commanded to the motor by the user.
+    pub target_velocity: AngularVelocity,
+    /// The actual velocity of the motor.
+    pub actual_velocity: AngularVelocity,
+    /// The current drawn by the motor in milliamperes.
+    pub current_draw: ElectricCurrent,
+    /// The direction of movement for the motor.
+    pub direction: Direction,
+    /// The efficiency of the motor in percent.
+    pub efficiency: Ratio,
+    /// The absolute position of the motor in encoder ticks.
+    pub position: Angle,
+    /// The power drawn by the motor in watts.
+    pub power: Power,
+    /// The temperature of the motor in degrees Celsius.
+    pub temperature: ThermodynamicTemperature,
+    /// The torque of the motor in newton-metres.
+    pub torque: Torque,
+    /// The voltage delivered to the motor in millivolts.
+    pub voltage: ElectricPotential<f64>,
+    /// Whether the motor is drawing over its current limit.
+    pub over_current: bool,
+    /// Whether the motor's temperature is above its limit.
+    pub over_temp: bool,
+    /// The brake mode that was set for the motor.
+    pub brake_mode: BrakeMode,
+    /// The current limit for the motor in milliamperes.
+    pub current_limit: ElectricCurrent,
+    /// The voltage limit set by the user in volts.
+    pub voltage_limit: ElectricPotential<i32>,
+}
+
 /// Represents possible errors for motor operations.
 #[derive(Debug)]
 pub enum MotorError {
@@ -416,6 +483,7 @@ impl From<MotorError> for Error {
 }
 
 /// Represents possible brake modes for a motor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BrakeMode {
     /// Motor coasts when stopped.
     Coast,
@@ -436,6 +504,7 @@ impl From<BrakeMode> for bindings::motor_brake_mode_e {
 }
 
 /// Represents possible gear cartridges for a motor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Gearset {
     /// Blue 6:1 Gearset (600RPM).
     SixToOne,
@@ -456,6 +525,7 @@ impl From<Gearset> for bindings::motor_gearset_e {
 }
 
 /// Represents two possible directions of movement for a robot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
     /// The positive direction.
     Positive,

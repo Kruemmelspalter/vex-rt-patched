@@ -17,25 +17,26 @@ impl DriveTrain {
     }
 }
 
-struct ClawBot {
-    drive_train: Mutex<DriveTrain>,
+struct RotationBot {
+    drive_train: DriveTrain,
 }
 
-impl Robot for ClawBot {
+impl Robot for RotationBot {
     fn new(peripherals: Peripherals) -> Self {
         Self {
-            drive_train: Mutex::new(DriveTrain::new(peripherals.port08)),
+            drive_train: DriveTrain::new(peripherals.port08),
         }
     }
 
-    fn autonomous(&'static self, ctx: Context) {
+    fn autonomous(&mut self, ctx: Context) {
         println!("autonomous");
         let mut l = Loop::new(Duration::from_millis(20));
 
-        let drive_train = self.drive_train.lock();
-
         loop {
-            println!("{:?}", drive_train.rotation_sensor.get_position().unwrap());
+            println!(
+                "{:?}",
+                self.drive_train.rotation_sensor.get_position().unwrap()
+            );
 
             select! {
                 _ = ctx.done() => break,
@@ -45,4 +46,4 @@ impl Robot for ClawBot {
     }
 }
 
-entry!(ClawBot);
+entry!(RotationBot);

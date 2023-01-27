@@ -1,7 +1,8 @@
-//! # ADI Encoder API.
-
-use crate::bindings;
-use crate::error::{get_errno, Error};
+use crate::{
+    bindings,
+    error::{get_errno, Error},
+    rtos::DataSource,
+};
 
 /// A struct which represents a V5 ADI port configured as an ADI encoder.
 pub struct AdiEncoder {
@@ -45,6 +46,16 @@ impl AdiEncoder {
             bindings::PROS_ERR_ => Err(AdiEncoderError::from_errno()),
             x => Ok(x),
         }
+    }
+}
+
+impl DataSource for AdiEncoder {
+    type Data = i32;
+
+    type Error = AdiEncoderError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        self.get()
     }
 }
 

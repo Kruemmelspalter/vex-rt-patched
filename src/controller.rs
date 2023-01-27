@@ -1,18 +1,17 @@
 //! Controller API.
 
-use core::{convert::TryInto, fmt::Debug, time::Duration};
+use core::{fmt, time::Duration};
+
+use alloc::collections::VecDeque;
 use slice_copy::copy;
 
 use crate::{
     bindings,
     error::{get_errno, Error},
     io::eprintln,
-    rtos::{channel, delay_until, time_since_start, Context, SendChannel, Task},
+    rtos::{delay_until, queue, time_since_start, Context, DataSource, SendQueue, Task},
     select,
 };
-
-#[cfg(feature = "async-await")]
-use crate::async_await::ExecutionContext;
 
 const SCREEN_SUCCESS_DELAY: Duration = Duration::from_millis(50);
 const SCREEN_FAILURE_DELAY: Duration = Duration::from_millis(5);
@@ -122,7 +121,7 @@ impl Controller {
                 id,
                 button: bindings::controller_digital_e_t_E_CONTROLLER_DIGITAL_A,
             },
-            screen: Screen { id, chan: None },
+            screen: Screen { id, queue: None },
         }
     }
 
@@ -135,7 +134,7 @@ impl Controller {
         }
     }
 
-    /// Gets the battery level of the controller
+    /// Gets the battery level of the controller.
     pub fn get_battery_level(&self) -> Result<i32, ControllerError> {
         match unsafe { bindings::controller_get_battery_level(self.id) } {
             bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
@@ -143,13 +142,89 @@ impl Controller {
         }
     }
 
-    /// Gets the battery level of the controller
+    /// Gets the battery capacity of the controller.
     pub fn get_battery_capacity(&self) -> Result<i32, ControllerError> {
         match unsafe { bindings::controller_get_battery_capacity(self.id) } {
             bindings::PROS_ERR_ => Err(ControllerError::from_errno()),
             x => Ok(x),
         }
     }
+}
+
+impl fmt::Debug for Controller {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Controller").field("id", &self.id).finish()
+    }
+}
+
+impl DataSource for Controller {
+    type Data = ControllerData;
+
+    type Error = ControllerError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        Ok(ControllerData {
+            left_x: self.left_stick.get_x()?,
+            left_y: self.left_stick.get_y()?,
+            right_x: self.right_stick.get_x()?,
+            right_y: self.right_stick.get_y()?,
+            l1: self.l1.is_pressed()?,
+            l2: self.l2.is_pressed()?,
+            r1: self.r1.is_pressed()?,
+            r2: self.r2.is_pressed()?,
+            up: self.up.is_pressed()?,
+            down: self.down.is_pressed()?,
+            left: self.left.is_pressed()?,
+            right: self.right.is_pressed()?,
+            x: self.x.is_pressed()?,
+            y: self.y.is_pressed()?,
+            a: self.a.is_pressed()?,
+            b: self.b.is_pressed()?,
+            battery_level: self.get_battery_level()?,
+            battery_capacity: self.get_battery_capacity()?,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+/// Describes data from all controller inputs.
+pub struct ControllerData {
+    /// The x-axis of the left analog stick.
+    pub left_x: i8,
+    /// The y-axis of the left analog stick.
+    pub left_y: i8,
+    /// The x-axis of the right analog stick.
+    pub right_x: i8,
+    /// The y-axis of the right analog stick.
+    pub right_y: i8,
+    /// The top-left shoulder button.
+    pub l1: bool,
+    /// The bottom-left shoulder button.
+    pub l2: bool,
+    /// The top-right shoulder button.
+    pub r1: bool,
+    /// The bottom-right shoulder button.
+    pub r2: bool,
+    /// The up directional button.
+    pub up: bool,
+    /// The down directional button.
+    pub down: bool,
+    /// The left directional button.
+    pub left: bool,
+    /// The right directional button.
+    pub right: bool,
+    /// The "X" button.
+    pub x: bool,
+    /// The "Y" button.
+    pub y: bool,
+    /// The "A" button.
+    pub a: bool,
+    /// The "B" button.
+    pub b: bool,
+    /// The battery level of the controller.
+    pub battery_level: i32,
+    /// The battery capacity of the controller.
+    pub battery_capacity: i32,
 }
 
 /// Represents one of two analog sticks on a Vex controller.
@@ -211,20 +286,13 @@ impl Button {
 /// Represents the screen on a Vex controller
 pub struct Screen {
     id: bindings::controller_id_e_t,
-    chan: Option<(Context, SendChannel<ScreenCommand>)>,
+    queue: Option<(Context, SendQueue<ScreenCommand>)>,
 }
 
 impl Screen {
     /// Clears all of the lines of the controller screen.
     pub fn clear(&mut self) {
         self.command(ScreenCommand::Clear);
-    }
-
-    #[cfg(feature = "async-await")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
-    /// Clears all of the lines of the controller screen.
-    pub async fn clear_async<'a>(&'a mut self, ec: ExecutionContext<'a>) {
-        self.command_async(ScreenCommand::Clear, ec).await;
     }
 
     /// Clears an individual line of the controller screen. Lines range from 0
@@ -236,38 +304,11 @@ impl Screen {
         self.command(ScreenCommand::ClearLine(line));
     }
 
-    #[cfg(feature = "async-await")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
-    /// Clears an individual line of the controller screen. Lines range from 0
-    /// to 2.
-    pub async fn clear_line_async<'a>(&'a mut self, line: u8, ec: ExecutionContext<'a>) {
-        if line > 2 {
-            return;
-        }
-        self.command_async(ScreenCommand::ClearLine(line), ec).await;
-    }
-
     /// Prints text to the controller LCD screen. Lines range from 0 to 2.
     /// Columns range from 0 to 18.
     pub fn print(&mut self, line: u8, column: u8, str: &str) {
         if let Some(cmd) = Self::print_command(line, column, str) {
             self.command(cmd);
-        }
-    }
-
-    #[cfg(feature = "async-await")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
-    /// Prints text to the controller LCD screen. Lines range from 0 to 2.
-    /// Columns range from 0 to 18.
-    pub async fn print_async<'a>(
-        &'a mut self,
-        line: u8,
-        column: u8,
-        str: &str,
-        ec: ExecutionContext<'a>,
-    ) {
-        if let Some(cmd) = Self::print_command(line, column, str) {
-            self.command_async(cmd, ec).await;
         }
     }
 
@@ -277,17 +318,6 @@ impl Screen {
     /// Maximum supported length is 8 characters.
     pub fn rumble(&mut self, rumble_pattern: &str) {
         self.command(Self::rumble_command(rumble_pattern));
-    }
-
-    #[cfg(feature = "async-await")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
-    /// Rumble the controller. Rumble pattern is a string consisting of the
-    /// characters ‘.’, ‘-’, and ‘ ‘, where dots are short rumbles, dashes are
-    /// long rumbles, and spaces are pauses; all other characters are ignored.
-    /// Maximum supported length is 8 characters.
-    pub async fn rumble_async<'a>(&'a mut self, rumble_pattern: &str, ec: ExecutionContext<'a>) {
-        self.command_async(Self::rumble_command(rumble_pattern), ec)
-            .await;
     }
 
     fn print_command(line: u8, column: u8, str: &str) -> Option<ScreenCommand> {
@@ -324,19 +354,12 @@ impl Screen {
     }
 
     fn command(&mut self, cmd: ScreenCommand) {
-        select! {
-            _ = self.chan().select(cmd) => {}
-        }
+        self.queue().send(cmd);
     }
 
-    #[cfg(feature = "async-await")]
-    async fn command_async<'a>(&'a mut self, cmd: ScreenCommand, ec: ExecutionContext<'a>) {
-        ec.proxy(self.chan().select(cmd)).await
-    }
-
-    fn chan(&mut self) -> &mut SendChannel<ScreenCommand> {
+    fn queue(&mut self) -> &mut SendQueue<ScreenCommand> {
         &mut self
-            .chan
+            .queue
             .get_or_insert_with(|| {
                 let name = match self.id {
                     bindings::controller_id_e_t_E_CONTROLLER_MASTER => "controller-screen-master",
@@ -344,7 +367,7 @@ impl Screen {
                     _ => "",
                 };
                 let id = self.id;
-                let (send, recv) = channel();
+                let (send, recv) = queue(VecDeque::<ScreenCommand>::new());
                 let ctx = Context::new_global();
                 let ctx_cloned = ctx.clone();
 
@@ -489,13 +512,13 @@ impl Screen {
 
 impl Drop for Screen {
     fn drop(&mut self) {
-        if let Some((ctx, _)) = self.chan.as_ref() {
+        if let Some((ctx, _)) = self.queue.as_ref() {
             ctx.cancel();
         }
     }
 }
 
-impl Debug for Screen {
+impl fmt::Debug for Screen {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Screen").field("id", &self.id).finish()
     }

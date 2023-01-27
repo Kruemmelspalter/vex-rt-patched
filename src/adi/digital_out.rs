@@ -1,7 +1,7 @@
-//! # ADI Digital Output API.
-
-use crate::bindings;
-use crate::error::{get_errno, Error};
+use crate::{
+    bindings,
+    error::{get_errno, Error},
+};
 
 /// A struct which represents a V5 ADI port configured as an ADI digital output.
 #[derive(Debug)]

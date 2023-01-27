@@ -14,7 +14,8 @@ impl Robot for ImuBot {
             sensor: peripherals.port01.into_imu(),
         }
     }
-    fn opcontrol(&'static self, ctx: Context) {
+
+    fn opcontrol(&mut self, ctx: Context) {
         let mut l = Loop::new(Duration::from_secs(1));
         loop {
             println!("{:#?}", self.sensor.get_heading().unwrap());

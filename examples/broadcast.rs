@@ -5,31 +5,30 @@ use core::time::Duration;
 use vex_rt::prelude::*;
 
 struct BroadcastBot {
-    bcast: Broadcast<i32>,
+    listener: BroadcastListener<i32>,
 }
 
 impl Robot for BroadcastBot {
     fn new(_peripherals: Peripherals) -> Self {
-        Self {
-            bcast: Broadcast::new(0),
-        }
-    }
-    fn initialize(&'static self, _ctx: Context) {
+        let bcast = Broadcast::new(0);
+        let listener = bcast.listen();
         let mut x = 0;
         let mut l = Loop::new(Duration::from_secs(1));
         Task::spawn(move || loop {
             x += 1;
-            self.bcast.publish(x);
+            bcast.publish(x);
             l.delay()
         })
         .unwrap();
+
+        Self { listener }
     }
-    fn opcontrol(&'static self, ctx: Context) {
+
+    fn opcontrol(&mut self, ctx: Context) {
         println!("opcontrol");
-        let mut l = self.bcast.listen();
         loop {
             select! {
-                x = l.select() => println!("{}", x),
+                x = self.listener.select() => println!("{}", x),
                 _ = ctx.done() => break,
             }
         }

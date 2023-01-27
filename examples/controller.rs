@@ -2,8 +2,10 @@
 #![no_main]
 
 extern crate alloc;
-use alloc::format;
+
 use core::time::Duration;
+
+use alloc::format;
 use vex_rt::prelude::*;
 
 struct DriveTrain {
@@ -18,35 +20,37 @@ impl DriveTrain {
     }
 }
 
-struct ClawBot {
-    controller: Mutex<Controller>,
-    drive_train: Mutex<DriveTrain>,
+struct ControllerBot {
+    controller: Controller,
+    drive_train: DriveTrain,
 }
 
-impl Robot for ClawBot {
+impl Robot for ControllerBot {
     fn new(p: Peripherals) -> Self {
-        ClawBot {
-            controller: Mutex::new(p.master_controller),
-            drive_train: Mutex::new(DriveTrain {
-                left_motor: p.port01.into_motor(Gearset::EighteenToOne, false).unwrap(),
-                right_motor: p.port02.into_motor(Gearset::EighteenToOne, true).unwrap(),
-            }),
+        ControllerBot {
+            controller: p.master_controller,
+            drive_train: DriveTrain {
+                left_motor: p
+                    .port01
+                    .into_motor(Gearset::EighteenToOne, false)
+                    .unwrap(),
+                right_motor: p
+                    .port02
+                    .into_motor(Gearset::EighteenToOne, true)
+                    .unwrap(),
+            },
         }
     }
 
-    fn opcontrol(&self, ctx: Context) {
+    fn opcontrol(&mut self, ctx: Context) {
         let mut l = Loop::new(Duration::from_millis(10));
-        let mut drive_train = self.drive_train.lock();
-        let mut controller = self.controller.lock();
-
-        controller.screen.rumble(".-  .-");
 
         loop {
-            let velocity = controller.left_stick.get_x().unwrap();
-            controller
+            let velocity = self.controller.left_stick.get_x().unwrap();
+            self.controller
                 .screen
                 .print(0, 0, &format!("Vel: {:<4}", velocity));
-            drive_train.spin(velocity);
+            self.drive_train.spin(velocity);
 
             select! {
                 _ = ctx.done() => break,
@@ -55,22 +59,19 @@ impl Robot for ClawBot {
         }
     }
 
-    fn disabled(&self, _ctx: Context) {
-        self.drive_train.lock().spin(0);
-        self.controller.lock().screen.clear();
+    fn disabled(&mut self, _ctx: Context) {
+        self.drive_train.spin(0);
+        self.controller.screen.clear();
     }
 
-    fn initialize(&self, _ctx: Context) {
-        self.controller.lock().screen.clear();
-        println!(
-            "level: {}",
-            self.controller.lock().get_battery_level().unwrap()
-        );
+    fn initialize(&mut self, _ctx: Context) {
+        self.controller.screen.clear();
+        println!("level: {}", self.controller.get_battery_level().unwrap());
         println!(
             "capacity: {}",
-            self.controller.lock().get_battery_capacity().unwrap()
+            self.controller.get_battery_capacity().unwrap()
         );
     }
 }
 
-entry!(ClawBot);
+entry!(ControllerBot);

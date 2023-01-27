@@ -12,7 +12,7 @@ use crate::{error::Error, select};
 /// Represents an ongoing operation which produces a result.
 pub struct Promise<T: 'static = ()>(Arc<Mutex<PromiseData<T>>>);
 
-impl<T: 'static> Promise<T> {
+impl<T: Send + Sync + 'static> Promise<T> {
     /// Creates a new lightweight promise and an associated resolve function.
     ///
     /// # Example
@@ -30,7 +30,7 @@ impl<T: 'static> Promise<T> {
     ///     }
     /// );
     /// ```
-    pub fn new() -> (Self, impl FnOnce(T)) {
+    pub fn new() -> (Self, impl FnOnce(T) + Send) {
         let data = Arc::new(Mutex::new(PromiseData::Incomplete(Event::new())));
         let promise = Self(data.clone());
         let resolve = move |r: T| {
@@ -82,9 +82,7 @@ impl<T: 'static> Promise<T> {
             handle: handle_event(PromiseHandle(Arc::downgrade(&self.0))),
         }
     }
-}
 
-impl<T: Send + Sync + 'static> Promise<T> {
     #[inline]
     /// Spawns a task to run the given function and returns a [`Promise`] that
     /// resolves with the result when it returns. Panics on failure; see

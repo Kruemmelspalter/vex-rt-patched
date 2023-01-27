@@ -1,6 +1,7 @@
 use crate::{
     bindings,
     error::{get_errno, Error},
+    rtos::DataSource,
 };
 
 /// Represents a V5 ADI port pair configured as an ultrasonic sensor.
@@ -33,6 +34,16 @@ impl AdiUltrasonic {
             r if r < 0 => Err(AdiUltrasonicError::NoReading),
             r => Ok(r as u32),
         }
+    }
+}
+
+impl DataSource for AdiUltrasonic {
+    type Data = u32;
+
+    type Error = AdiUltrasonicError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        self.get()
     }
 }
 
