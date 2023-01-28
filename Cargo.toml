@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "0.15.0"
+version = "0.15.1"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
@@ -28,7 +28,7 @@ owner-monad = "0.1.0"
 raii-map = "0.1.0"
 queue-model = "0.1.2"
 slice-copy = "0.3.0"
-vex-rt-macros = { version = "0.1.0", path = "macros" }
+vex-rt-macros = { version = "0.1.1", path = "macros" }
 
 [build-dependencies]
 bindgen = "0.63.0"

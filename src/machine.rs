@@ -128,3 +128,28 @@ impl ListenerBox {
         }
     }
 }
+
+/// The possible results for state processing in a state machine.
+///
+/// `T` is the output type of the state, and `S` is the state type of the state
+/// machine.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StateResult<T, S> {
+    /// Finishes processing the state with the given output, without
+    /// transitioning to a new state.
+    Simple(T),
+    /// Finishes processing the state with the given output and transitions to
+    /// the given next state.
+    Transition(T, S),
+}
+
+impl<T, S> StateResult<T, S> {
+    /// Produces the result as a tuple of output value and optional next state.
+    pub fn into_tuple(self) -> (T, Option<S>) {
+        match self {
+            StateResult::Simple(result) => (result, None),
+            StateResult::Transition(result, next) => (result, Some(next)),
+        }
+    }
+}
