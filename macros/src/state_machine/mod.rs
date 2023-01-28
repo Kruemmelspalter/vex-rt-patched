@@ -12,8 +12,8 @@ use syn::{
     Arm, Attribute, Expr, ExprCall, ExprMatch, ExprPath, ExprStruct, Field, FieldValue, Fields,
     FieldsNamed, FieldsUnnamed, FnArg, Generics, Ident, ImplItem, ImplItemMethod, ImplItemType,
     ItemEnum, ItemFn, ItemImpl, ItemStruct, Member, Pat, PatIdent, PatTuple, PatTupleStruct,
-    PatType, Path, PathArguments, PathSegment, Receiver, ReturnType, Signature, Type, TypePath,
-    Variant, Visibility,
+    PatType, Path, PathArguments, PathSegment, Receiver, ReturnType, Signature, Token, Type,
+    TypePath, Variant, Visibility,
 };
 
 use crate::util::{ident_append, ident_to_case, pat_to_ident};
@@ -297,6 +297,7 @@ fn gen_impl(
                      body,
                      ..
                  }| {
+                    let fn_ident = ident_append(ident, "_impl__");
                     let ident = ident_to_case(ident, Case::Pascal);
                     let path = parse_quote!(#state_ident::#ident);
                     let refs = refs.content.iter();
@@ -305,6 +306,11 @@ fn gen_impl(
                     } else {
                         parse_quote!(())
                     };
+                    let args_values = Punctuated::<Ident, Token![,]>::from_iter(args.pairs().enumerate().map(|(index, p)| {
+                        let (arg, punct) = p.into_tuple();
+                        let ident = pat_to_ident(&arg.pat, index).into_owned();
+                        Pair::new(ident, punct.cloned())
+                    }));
 
                     Arm {
                         attrs: Vec::new(),
@@ -321,9 +327,10 @@ fn gen_impl(
                                 pat: PatTuple {
                                     attrs: Vec::new(),
                                     paren_token: *paren_token,
-                                    elems: Punctuated::from_iter(args.pairs().map(|p| {
+                                    elems: Punctuated::from_iter(args.pairs().enumerate().map(|(index, p)| {
                                         let (arg, punct) = p.into_tuple();
-                                        Pair::new((*arg.pat).clone(), punct.cloned())
+                                        let ident = pat_to_ident(&arg.pat, index);
+                                        Pair::new(parse_quote!(#ident), punct.cloned())
                                     })),
                                 },
                             })
@@ -331,13 +338,20 @@ fn gen_impl(
                         guard: None,
                         fat_arrow_token: Default::default(),
                         body: parse_quote! {{
-                            let #ctx = ctx__.clone();
-                            let #vars_ident {
+                            #[inline]
+                            fn #fn_ident #generics(#ctx: #crate_::rtos::Context, #vars_ident {
                                 #(#refs,)*
                                 ..
-                            } = vars__;
-                            let result__ = #body;
+                            }: &mut #vars_ident #vars_generics_args, #args) -> #crate_::machine::StateResult<#result_type, #state_ident #state_generics_args> {
+                                let result__ = #body;
+
+                                #[allow(unreachable_code)]
+                                #crate_::machine::StateResult::Simple(result__)
+                            }
+
+                            let (result__, next__) = #fn_ident(ctx__.clone(), &mut vars__, #args_values).into_tuple();
                             data__.lock().resolve::<#result_type>(result__);
+                            next__
                         }},
                         comma: None,
                     }
@@ -358,14 +372,18 @@ fn gen_impl(
             ident: parse_quote!(run__),
             generics: generics.clone(),
             paren_token: Default::default(),
-            inputs: parse_quote!(data__: &#crate_::machine::StateMachineHandle<#state_ident #state_generics_args>, vars__: &mut #vars_ident #vars_generics_args),
+            inputs: parse_quote!(data__: #crate_::machine::StateMachineHandle<#state_ident #state_generics_args>, mut vars__: #vars_ident #vars_generics_args),
             variadic: None,
             output: ReturnType::Default,
         },
         block: parse_quote! {{
-            let (state__, ctx__) = data__.lock().begin();
-            #state_match
-            #crate_::rtos::select(ctx__.done());
+            loop {
+                let (mut state__, ctx__) = data__.lock().begin();
+                while let Some(next__) = #state_match {
+                    state__ = next__;
+                }
+                #crate_::rtos::select(ctx__.done());
+            }
         }},
     };
 
@@ -406,9 +424,7 @@ fn gen_impl(
                 #task_name,
                 #crate_::rtos::Task::DEFAULT_PRIORITY,
                 #crate_::rtos::Task::DEFAULT_STACK_DEPTH,
-                move || loop {
-                    run__(&data__, &mut vars__);
-                },
+                move || run__(data__, vars__),
             ).unwrap();
             self__
         }},

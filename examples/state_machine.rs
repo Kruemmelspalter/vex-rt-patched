@@ -81,10 +81,11 @@ state_machine! {
     ///
     /// Returns whether the movement completed successfully.
     auto_drive(ctx, distance: Angle) [drive] -> bool {
-        drive.drive_distance(distance, ctx).unwrap_or_else(|err| {
+        let result = drive.drive_distance(distance, ctx).unwrap_or_else(|err| {
             eprintln!("auto drive error: {:?}", err);
             false
-        })
+        });
+        return StateResult::Transition(result, DriveState::Idle);
     }
 }
 
