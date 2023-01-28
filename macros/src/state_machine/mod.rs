@@ -1,4 +1,7 @@
-use std::{iter::empty, ops::Deref};
+use std::{
+    iter::{empty, repeat},
+    ops::Deref,
+};
 
 use convert_case::Case;
 use generics_util::{filter_generics, generics_as_args};
@@ -16,7 +19,7 @@ use syn::{
     TypePath, Variant, Visibility,
 };
 
-use crate::util::{ident_append, ident_to_case, pat_to_ident};
+use crate::util::{ident_append, ident_prepend, ident_to_case, pat_to_ident};
 
 use self::input::{Input, State};
 
@@ -61,7 +64,14 @@ pub fn make_state_machine(input: Input) -> TokenStream {
     let vars_struct =
         gen_vars_struct(&input, vars_ident.clone(), vars_generics).into_token_stream();
     let state_enum =
-        gen_state_enum(&input, state_ident.clone(), state_generics).into_token_stream();
+        gen_state_enum(&input, state_ident.clone(), state_generics.clone()).into_token_stream();
+    let state_impl = gen_state_impl(
+        &input,
+        state_ident.clone(),
+        state_generics,
+        state_generics_args.clone(),
+    )
+    .into_token_stream();
     let main_struct = gen_struct(
         &input,
         vars_ident.clone(),
@@ -91,6 +101,7 @@ pub fn make_state_machine(input: Input) -> TokenStream {
     quote! {
         #vars_struct
         #state_enum
+        #state_impl
         #main_struct
         #main_impl
         #main_impl_sm
@@ -177,6 +188,59 @@ fn gen_state_enum(input: &Input, ident: Ident, generics: Generics) -> ItemEnum {
                 discriminant: None,
             }
         })),
+    }
+}
+
+fn gen_state_impl(
+    input: &Input,
+    states_ident: Ident,
+    generics: Generics,
+    generics_args: PathArguments,
+) -> ItemImpl {
+    let Input { states, .. } = input;
+
+    let items = states
+        .iter()
+        .map(|State { ident, args, .. }| {
+            let docstring = format!("Checks whether the state is {}.", ident);
+            let fn_ident = ident_prepend(ident, "is_");
+            let ident = ident_to_case(ident, Case::Pascal);
+            let args = if args.is_empty() {
+                quote!()
+            } else {
+                let args = repeat(quote!(_)).take(args.len());
+                quote!((#(#args,)*))
+            };
+
+            parse_quote! {
+                #[doc = #docstring]
+                pub fn #fn_ident(&self) -> bool {
+                    match self {
+                        #states_ident::#ident #args => true,
+                        _ => false,
+                    }
+                }
+            }
+        })
+        .collect_vec();
+
+    ItemImpl {
+        attrs: Vec::new(),
+        defaultness: None,
+        unsafety: None,
+        impl_token: Default::default(),
+        generics,
+        trait_: None,
+        self_ty: Box::new(Type::Path(TypePath {
+            qself: None,
+            path: PathSegment {
+                ident: states_ident,
+                arguments: generics_args,
+            }
+            .into(),
+        })),
+        brace_token: Default::default(),
+        items,
     }
 }
 
