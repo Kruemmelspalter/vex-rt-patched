@@ -7,6 +7,10 @@ use syn::{spanned::Spanned, Ident, Pat, Path};
 pub fn ident_append(base: &Ident, suffix: &str) -> Ident {
     Ident::new(format!("{}{}", base, suffix).as_str(), base.span())
 }
+/// Appends a string to an [`Ident`].
+pub fn ident_prepend(base: &Ident, prefix: &str) -> Ident {
+    Ident::new(format!("{}{}", prefix, base).as_str(), base.span())
+}
 
 /// Converts the case of an [`Ident`].
 pub fn ident_to_case(ident: &Ident, case: Case) -> Ident {
