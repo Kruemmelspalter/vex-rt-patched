@@ -1,5 +1,11 @@
 //! # Motor API.
 
+use core::{
+    convert::identity,
+    ops::{Index, IndexMut},
+    slice::{Iter, IterMut},
+};
+
 use uom::si::{
     angle::revolution,
     angular_velocity::revolution_per_minute,
@@ -449,6 +455,270 @@ pub struct MotorData {
     pub current_limit: ElectricCurrent,
     /// The voltage limit set by the user in volts.
     pub voltage_limit: ElectricPotential<i32>,
+}
+
+/// Represents a group of motors.
+pub struct MotorGroup<const N: usize> {
+    motors: [Motor; N],
+}
+
+impl<const N: usize> MotorGroup<N> {
+    /// Construct a new motor group from a vector of motors.
+    pub fn new(motors: [Motor; N]) -> Self {
+        Self { motors }
+    }
+
+    /// Sets the voltage of all motors in the group from -127 to 127; see
+    /// [`Motor::move_i8()`].
+    pub fn move_i8(&mut self, voltage: i8) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.move_i8(voltage)?;
+        }
+        Ok(())
+    }
+
+    /// Sets the target absolute position for all motors in the group; see
+    /// [`Motor::move_absolute()`].
+    pub fn move_absolute(
+        &mut self,
+        position: Angle,
+        velocity: AngularVelocity,
+    ) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.move_absolute(position, velocity)?;
+        }
+        Ok(())
+    }
+
+    /// Sets the target relative position for all motors in the group; see
+    /// [`Motor::move_relative()`].
+    pub fn move_relative(
+        &mut self,
+        position: Angle,
+        velocity: AngularVelocity,
+    ) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.move_relative(position, velocity)?;
+        }
+        Ok(())
+    }
+
+    /// Sets the velocity for the motor; see [`Motor::move_velocity()`].
+    pub fn move_velocity(&mut self, velocity: AngularVelocity) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.move_velocity(velocity)?;
+        }
+        Ok(())
+    }
+
+    /// Sets the output voltage for the motor from -12 V to 12 V; see
+    /// [`Motor::move_voltage()`].
+    pub fn move_voltage(&mut self, voltage: ElectricPotential<f64>) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.move_voltage(voltage)?;
+        }
+        Ok(())
+    }
+
+    /// Changes the output velocity for a profiled movement; see
+    /// [`Motor::modify_profiled_velocity()`].
+    pub fn modify_profiled_velocity(
+        &mut self,
+        velocity: AngularVelocity,
+    ) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.modify_profiled_velocity(velocity)?;
+        }
+        Ok(())
+    }
+
+    /// Gets the actual velocity of each motor; see
+    /// [`Motor::get_actual_velocity()`].
+    pub fn get_actual_velocity(&self) -> Result<[AngularVelocity; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::get_actual_velocity)
+    }
+
+    /// Gets the average actual velocity of the motors.
+    pub fn get_average_actual_velocity(&self) -> Result<AngularVelocity, MotorError> {
+        let mut value = self.get_actual_velocity()?.into_iter().sum();
+        value *= (N as f64).recip();
+        Ok(value)
+    }
+
+    /// Gets the current draw of each motor; see [`Motor::get_current_draw()`].
+    pub fn get_current_draw(&self) -> Result<[ElectricCurrent; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::get_current_draw)
+    }
+
+    /// Gets the total current draw of the motors.
+    pub fn get_total_current_draw(&self) -> Result<ElectricCurrent, MotorError> {
+        Ok(self.get_current_draw()?.into_iter().sum())
+    }
+
+    /// Gets the efficiency of each motor; see [`Motor::get_efficiency()`].
+    pub fn get_efficiency(&self) -> Result<[Ratio; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::get_efficiency)
+    }
+
+    /// Gets the average efficiency of the motors.
+    pub fn get_average_efficiency(&self) -> Result<Ratio, MotorError> {
+        let mut value = self.get_efficiency()?.into_iter().sum();
+        value *= (N as f64).recip();
+        Ok(value)
+    }
+
+    /// Gets the position of each motor; see [`Motor::get_position`].
+    pub fn get_position(&self) -> Result<[Angle; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::get_position)
+    }
+
+    /// Gets the average position of the motors.
+    pub fn get_average_position(&self) -> Result<Angle, MotorError> {
+        let mut value = self.get_position()?.into_iter().sum();
+        value *= (N as f64).recip();
+        Ok(value)
+    }
+
+    /// Gets the power drawn by each motor; see [`Motor::get_power()`].
+    pub fn get_power(&self) -> Result<[Power; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::get_power)
+    }
+
+    /// Gets the total power drawn by the motors.
+    pub fn get_total_power(&self) -> Result<Power, MotorError> {
+        Ok(self.get_power()?.into_iter().sum())
+    }
+
+    /// Gets the temperate of each motor; see [`Motor::get_temperature()`].
+    pub fn get_temperature(&self) -> Result<[ThermodynamicTemperature; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::get_temperature)
+    }
+
+    /*
+    pub fn get_average_temperature(&self) -> Result<ThermodynamicTemperature, MotorError> {
+        let mut value = self.get_temperature()?.into_iter().sum();
+        value *= (N as f64).recip();
+        Ok(value)
+    } // */
+
+    /// Gets the torque applied by each motor; see [`Motor::get_torque()`].
+    pub fn get_torque(&self) -> Result<[Torque; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::get_torque)
+    }
+
+    /// Gets the total torque applied by the motors.
+    pub fn get_total_torque(&self) -> Result<Torque, MotorError> {
+        Ok(self.get_torque()?.into_iter().sum())
+    }
+
+    /// Gets the voltage delivered to each motor; see [`Motor::get_voltage()`].
+    pub fn get_voltage(&self) -> Result<[ElectricPotential<f64>; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::get_voltage)
+    }
+
+    /// Gets the average voltage delivered to the motors.
+    pub fn get_average_voltage(&self) -> Result<ElectricPotential<f64>, MotorError> {
+        let mut value = self.get_voltage()?.into_iter().sum();
+        value *= (N as f64).recip();
+        Ok(value)
+    }
+
+    /// Checks if each motor is drawing over its current limit; see
+    /// [`Motor::is_over_current()`].
+    pub fn is_over_current(&self) -> Result<[bool; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::is_over_current)
+    }
+
+    /// Checks whether any of the motors are drawing over their current limit.
+    pub fn is_any_over_current(&self) -> Result<bool, MotorError> {
+        Ok(self.is_over_current()?.into_iter().any(identity))
+    }
+
+    /// Checks if each motor is over its temperature limit; see
+    /// [`Motor::is_over_temp()`].
+    pub fn is_over_temp(&self) -> Result<[bool; N], MotorError> {
+        self.motors.each_ref().try_map(Motor::is_over_temp)
+    }
+
+    /// Checks whether any of the motors are over their temperature limit.
+    pub fn is_any_over_temp(&self) -> Result<bool, MotorError> {
+        Ok(self.is_over_temp()?.into_iter().any(identity))
+    }
+
+    /// Sets the brake mode of all motors in the group; see
+    /// [`Motor::set_brake_mode()`].
+    pub fn set_brake_mode(&mut self, mode: BrakeMode) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.set_brake_mode(mode)?;
+        }
+        Ok(())
+    }
+
+    /// Sets the current limit of all motors in the group; see
+    /// [`Motor::set_current_limit()`].
+    pub fn set_current_limit(&mut self, limit: ElectricCurrent) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.set_current_limit(limit)?;
+        }
+        Ok(())
+    }
+
+    /// Sets the voltage limit of all motors in the group; see
+    /// [`Motor::set_voltage_limit()`].
+    pub fn set_voltage_limit(&mut self, limit: ElectricPotential<i32>) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.set_voltage_limit(limit)?;
+        }
+        Ok(())
+    }
+
+    /// Sets the "absolute" zero position of each motor to its current position.
+    pub fn tare_position(&mut self) -> Result<(), MotorError> {
+        for motor in self.motors.iter_mut() {
+            motor.tare_position()?;
+        }
+        Ok(())
+    }
+
+    /// Returns an iterator over the motors in the group.
+    pub fn iter(&self) -> Iter<'_, Motor> {
+        self.motors.iter()
+    }
+
+    /// Returns a mutable iterator over the motors in the group.
+    pub fn iter_mut(&mut self) -> IterMut<'_, Motor> {
+        self.motors.iter_mut()
+    }
+}
+
+impl<Idx, const N: usize> Index<Idx> for MotorGroup<N>
+where
+    [Motor; N]: Index<Idx>,
+{
+    type Output = <[Motor; N] as Index<Idx>>::Output;
+
+    fn index(&self, index: Idx) -> &Self::Output {
+        &self.motors[index]
+    }
+}
+
+impl<Idx, const N: usize> IndexMut<Idx> for MotorGroup<N>
+where
+    [Motor; N]: IndexMut<Idx>,
+{
+    fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
+        &mut self.motors[index]
+    }
+}
+
+impl<const N: usize> DataSource for MotorGroup<N> {
+    type Data = [MotorData; N];
+
+    type Error = MotorError;
+
+    fn read(&self) -> Result<Self::Data, Self::Error> {
+        self.motors.each_ref().try_map(DataSource::read)
+    }
 }
 
 /// Represents possible errors for motor operations.

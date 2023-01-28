@@ -3,6 +3,8 @@
 #![no_main]
 #![no_std]
 #![feature(alloc_error_handler)]
+#![feature(array_methods)]
+#![feature(array_try_map)]
 #![feature(negative_impls)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs, unused_import_braces)]

@@ -48,7 +48,6 @@ itertools = { version = "0.10.0", default-features = false, features = ["use_all
 
 [features]
 async-await = ["dep:futures", "dep:replace_with"]
-docsrs = []
 
 [package.metadata.docs.rs]
 all-features = true

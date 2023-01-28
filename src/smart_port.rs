@@ -6,7 +6,7 @@ use crate::{
     distance::DistanceSensor,
     error::Error,
     imu::InertialSensor,
-    motor::{Gearset, Motor, MotorError},
+    motor::{Gearset, Motor, MotorError, MotorGroup},
     rotation::{RotationSensor, RotationSensorError},
     serial::Serial,
 };
@@ -81,6 +81,14 @@ impl TryFrom<(SmartPort, Gearset, bool)> for Motor {
 
     fn try_from((port, gearset, reverse): (SmartPort, Gearset, bool)) -> Result<Self, Self::Error> {
         unsafe { Self::new(port.port, gearset, reverse) }
+    }
+}
+
+impl<const N: usize> TryFrom<[(SmartPort, Gearset, bool); N]> for MotorGroup<N> {
+    type Error = MotorError;
+
+    fn try_from(value: [(SmartPort, Gearset, bool); N]) -> Result<Self, Self::Error> {
+        Ok(MotorGroup::new(value.try_map(Motor::try_from)?))
     }
 }
 
