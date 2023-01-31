@@ -499,6 +499,7 @@ impl GenericSleep {
 
 /// Represents a future event which can be used with the
 /// [`select!`](crate::select!) macro.
+#[must_use]
 pub trait Selectable: Sized {
     /// The type of the event result.
     type Output;
@@ -510,6 +511,17 @@ pub trait Selectable: Sized {
     /// Gets the earliest time that the event could be ready.
     fn sleep(&self) -> GenericSleep;
 }
+
+/// An extension trait which provides utility functions for [`Selectable`]
+/// events.
+pub trait SelectableExt: Selectable {
+    /// Waits for the event to complete.
+    fn wait(self) -> Self::Output {
+        select(self)
+    }
+}
+
+impl<E: Selectable> SelectableExt for E {}
 
 #[inline]
 /// Creates a new [`Selectable`] event by mapping the result of a given one.
@@ -581,6 +593,53 @@ pub fn select_either<'a, T: 'a>(
     }
 
     EitherSelect(fst, snd, PhantomData)
+}
+
+#[inline]
+/// Creates a new [`Selectable`] event which waits for both of the given events
+/// to complete, processing each when it is ready.
+pub fn select_both<'a, T: 'a, U: 'a>(
+    fst: impl Selectable<Output = T> + 'a,
+    snd: impl Selectable<Output = U> + 'a,
+) -> impl Selectable<Output = (T, U)> {
+    enum BothSelect<E1: Selectable, E2: Selectable> {
+        Neither(E1, E2),
+        GotFirst(E1::Output, E2),
+        GotSecond(E1, E2::Output),
+    }
+
+    impl<E1: Selectable, E2: Selectable> Selectable for BothSelect<E1, E2> {
+        type Output = (E1::Output, E2::Output);
+
+        fn poll(self) -> Result<Self::Output, Self> {
+            match self {
+                Self::Neither(fst, snd) => Err(match (fst.poll(), snd.poll()) {
+                    (Ok(fst), Ok(snd)) => return Ok((fst, snd)),
+                    (Ok(fst), Err(snd)) => Self::GotFirst(fst, snd),
+                    (Err(fst), Ok(snd)) => Self::GotSecond(fst, snd),
+                    (Err(fst), Err(snd)) => Self::Neither(fst, snd),
+                }),
+                Self::GotFirst(fst, snd) => match snd.poll() {
+                    Ok(snd) => Ok((fst, snd)),
+                    Err(snd) => Err(Self::GotFirst(fst, snd)),
+                },
+                Self::GotSecond(fst, snd) => match fst.poll() {
+                    Ok(fst) => Ok((fst, snd)),
+                    Err(fst) => Err(Self::GotSecond(fst, snd)),
+                },
+            }
+        }
+
+        fn sleep(&self) -> GenericSleep {
+            match self {
+                BothSelect::Neither(fst, snd) => fst.sleep().combine(snd.sleep()),
+                BothSelect::GotFirst(_, snd) => snd.sleep(),
+                BothSelect::GotSecond(fst, _) => fst.sleep(),
+            }
+        }
+    }
+
+    BothSelect::Neither(fst, snd)
 }
 
 #[inline]

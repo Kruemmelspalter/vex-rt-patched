@@ -7,7 +7,7 @@
 /// state definitions. The state machine definition has the syntax:
 /// ```text
 /// <visibility> <TypeName>(<generics>)? (<parenthesized_parameter_list>)? ({
-///     (<field_definition> = <initializer>),*
+///     ((&)? <field_definition> = <initializer>),*
 /// })? = <initial_state>;
 /// ```
 ///
@@ -23,9 +23,13 @@
 /// parenthesized argument list (for which the parameters are in scope) if the
 /// state has any parameters.
 ///
+/// If a field definition is prefixed by `&`, then it is a shared field; in that
+/// case, the state implementations do not have exclusive access to it, and a
+/// public method is created on the state machine type to provide access to it.
+///
 /// Each state definition has the syntax:
 /// ```text
-/// <name>(<ctx> (, (<param>),*)?) ([(<field_pat>),*])? (-> <return_type>)? {
+/// <name>(<ctx> (, (<param>),*)?) (-> <return_type>)? {
 ///     <body>
 /// }
 /// ```
@@ -33,12 +37,11 @@
 /// Here, `<name>` is the name of the state (which should be in `snake_case`);
 /// `<ctx>` is the name for a parameter which will be passed the
 /// [`Context`](crate::rtos::Context) for the state execution; each `<param>` is
-/// a parameter definition, as in a function signature; each `<field_pat>` is a
-/// field pattern for destructuring a `struct` containing the fields defined in
-/// the state machine definition; `<return_type>` is the return type, which is
-/// `()` if omitted, as with ordinary functions; and `<body>` is the function
-/// body which implements the state behaviour, for which the state parameters
-/// and field patterns are in scope.
+/// a parameter definition, as in a function signature; `<return_type>` is the
+/// return type, which is `()` if omitted, as with ordinary functions; and
+/// `<body>` is the function body which implements the state behaviour, for
+/// which the state parameters are in scope. Within the body, `self` can be used
+/// to access the fields.
 ///
 /// The macro generates two types with the configured `<visibility>`: a `struct
 /// <TypeName>`, an instance of which is an actual state machine, and an `enum

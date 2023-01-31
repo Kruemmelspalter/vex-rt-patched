@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "1.0.0-rc.2"
+version = "1.0.0-rc.3"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
@@ -24,6 +24,7 @@ cstring-interop = "0.1.0"
 futures = { version = "0.3.25", default-features = false, features = ["alloc", "async-await"], optional = true }
 libc = { version = "0.2.139", default-features = false }
 libc-print = "0.1.20"
+log = { version = "0.4.17", optional = true }
 newlib-alloc = "0.1.0"
 num-traits = { version = "0.2.15", default-features = false }
 owner-monad = "0.1.0"
@@ -34,7 +35,7 @@ replace_with = { version = "0.1.7", default-features = false, features = ["night
 slice-copy = "0.3.0"
 spin = "0.9.4"
 uom = { version = "0.33.0", default-features = false, features = ["f64", "i32", "si", "try-from"] }
-vex-rt-macros = { version = "1.0.0-rc.2", path = "macros" }
+vex-rt-macros = { version = "1.0.0-rc.3", path = "macros" }
 
 [build-dependencies]
 bindgen = "0.63.0"
@@ -47,6 +48,7 @@ itertools = { version = "0.10.5", default-features = false, features = ["use_all
 
 [features]
 async-await = ["dep:futures", "dep:replace_with"]
+logging = ["dep:log"]
 
 [package.metadata.docs.rs]
 all-features = true
