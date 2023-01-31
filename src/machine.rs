@@ -1,17 +1,17 @@
 //! Support for synchronous and asynchronous state machines.
 
-use alloc::{boxed::Box, sync::Arc};
+use alloc::{boxed::Box, string::ToString, sync::Arc};
 use core::{
     any::Any,
     marker::{Send, Sync},
 };
 
-use crate::rtos::{Context, ContextWrapper, Mutex, Promise};
+use crate::rtos::{Context, ContextWrapper, GenericSleep, Mutex, Promise, Selectable, Task};
 
-/// Denotes a type which represents a state machine.
+/// Denotes afield2type which represents a state machine.
 pub trait StateMachine {
     /// The state type used by the state machine.
-    type State;
+    type State: StateType;
 
     /// Gets the current state of the state machine.
     fn state(&self) -> Self::State;
@@ -22,21 +22,37 @@ pub trait StateMachine {
     fn transition(&self, state: Self::State) -> Context;
 }
 
+/// Denotes a type which represents the state of a state machine.
+pub trait StateType: Clone + Send + Sync + 'static {
+    /// The human-readable name for the state machine.
+    const STATE_MACHINE_NAME: &'static str;
+
+    /// Gives the human-readable name for the state.
+    fn name(&self) -> &str;
+}
+
 /// Data structure used by state machines generated using the
 /// [`state_machine!`](crate::state_machine!) macro.
-pub struct StateMachineData<S: Clone> {
+pub struct StateMachineData<S: StateType> {
     state: S,
-    listener: ListenerBox,
+    task: Task,
+    next_frame: Option<StateFrame<S>>,
     ctxw: ContextWrapper,
 }
 
-impl<S: Clone> StateMachineData<S> {
+impl<S: StateType> StateMachineData<S> {
     /// Constructs a new data structure, wrapped in a [`StateMachineHandle`].
     pub fn new_wrapped(state: S) -> StateMachineHandle<S> {
+        let mut ctxw = ContextWrapper::new_ext(Some(S::STATE_MACHINE_NAME.to_string()));
         Arc::new(Mutex::new(Self {
-            state,
-            listener: ListenerBox(None),
-            ctxw: ContextWrapper::new(),
+            state: state.clone(),
+            task: Task::current(),
+            next_frame: Some(StateFrame {
+                state,
+                ctx: ctxw.replace(),
+                listener: ListenerBox(None),
+            }),
+            ctxw,
         }))
     }
 
@@ -45,60 +61,212 @@ impl<S: Clone> StateMachineData<S> {
         &self.state
     }
 
+    /// Sets the task which the state machine is running on.
+    pub fn set_task(&mut self, task: Task) {
+        self.task = task;
+    }
+
     /// Begins executing a new state.
     ///
-    /// Returns the state to execute and the context for the execution.
-    pub fn begin(&mut self) -> (S, Context) {
-        (
-            self.state.clone(),
-            if let Some(ctx) = self.ctxw.current() {
-                ctx.clone()
-            } else {
-                self.ctxw.replace()
-            },
-        )
+    /// Called by the state machine main task. Returns the new state frame.
+    pub fn try_begin(&mut self) -> Option<StateFrame<S>> {
+        let frame = self.next_frame.take()?;
+
+        #[cfg(feature = "logging")]
+        log::debug!(
+            target: S::STATE_MACHINE_NAME,
+            "{} -> {} by request {}",
+            self.state.name(),
+            frame.state.name(),
+            frame.ctx.name(),
+        );
+
+        self.state = frame.state.clone();
+        Some(frame)
     }
 
-    /// Instructs a transition to a new state.
+    /// Transitions directly to a new state.
     ///
-    /// Returns the context under which that state will execute.
-    pub fn transition(&mut self, state: S) -> Context {
-        self.state = state;
-        self.listener.clear();
-        self.ctxw.replace()
+    /// Called by the state machine main task. Returns the new state frame.
+    pub fn tail_transition(&mut self, frame: StateFrame<S>, state: S) -> StateFrame<S> {
+        #[cfg(feature = "logging")]
+        log::debug!(
+            target: S::STATE_MACHINE_NAME,
+            "{} -> {} by tail-transition",
+            self.state.name(),
+            state.name(),
+        );
+
+        self.state = state.clone();
+        StateFrame { state, ..frame }
     }
 
-    /// Instructs a transition to a new state, given a parent context to limit
-    /// the execution of the state body.
-    pub fn transition_ext(&mut self, ctx: Context, state: S) -> Context {
-        self.state = state;
-        self.listener.clear();
-        self.ctxw.replace_ext(ctx)
-    }
-
-    /// Produces a promise which listens for the result of the current state.
+    /// Begins setting up a transition request to a new state.
     ///
-    /// The promise will only be resolved if `T` matches the result type of the
-    /// current state.
-    pub fn listen<T: Send + Sync>(&mut self) -> Promise<T> {
-        self.listener.listen::<T>()
+    /// Returns a builder for the transition operation.
+    pub fn transition(&mut self, state: S) -> TransitionBuilder<'_, S> {
+        self.transition_impl(None, state)
     }
 
-    /// Resolves the listener promise, if there is one and its type matches.
-    pub fn resolve<T: 'static>(&mut self, result: T) {
-        self.listener.resolve::<T>(result);
+    /// Begins setting up a transition request to a new state, given a parent
+    /// context to limit the execution of the state body.
+    pub fn transition_ext<'a>(
+        &'a mut self,
+        ctx: &'a Context,
+        state: S,
+    ) -> TransitionBuilder<'a, S> {
+        self.transition_impl(Some(ctx), state)
+    }
+
+    fn transition_impl<'a>(
+        &'a mut self,
+        ctx: Option<&'a Context>,
+        state: S,
+    ) -> TransitionBuilder<'a, S> {
+        #[cfg(feature = "logging")]
+        log::trace!(target: S::STATE_MACHINE_NAME, "requesting {}", state.name());
+
+        // self.state = state;
+        // let ctx = self.ctxw.replace_ext(&ctx);
+        TransitionBuilder {
+            state,
+            ctx,
+            listener: ListenerBox(None),
+            data: self,
+        }
     }
 }
 
 /// A shared instance of [`StateMachineData`].
 pub type StateMachineHandle<S> = Arc<Mutex<StateMachineData<S>>>;
 
-struct ListenerBox(Option<Box<dyn Any + Send>>);
+/// Gives an event which resolves once a state request is available.
+///
+/// Must be called from the task which runs the state machine.
+pub fn state_begin<S: StateType>(
+    handle: &StateMachineHandle<S>,
+) -> impl Selectable<Output = StateFrame<S>> + '_ {
+    struct BeginSelect<'a, S: StateType>(&'a StateMachineHandle<S>);
+
+    impl<'a, S: StateType> Selectable for BeginSelect<'a, S> {
+        type Output = StateFrame<S>;
+
+        fn poll(self) -> Result<Self::Output, Self> {
+            self.0.lock().try_begin().ok_or(self)
+        }
+
+        fn sleep(&self) -> crate::prelude::GenericSleep {
+            GenericSleep::NotifyTake(None)
+        }
+    }
+
+    BeginSelect(handle)
+}
+
+/// A builder for a transition request.
+pub struct TransitionBuilder<'a, S: StateType> {
+    state: S,
+    ctx: Option<&'a Context>,
+    listener: ListenerBox,
+    data: &'a mut StateMachineData<S>,
+}
+
+impl<'a, S: StateType> TransitionBuilder<'a, S> {
+    /// Executes the transition request.
+    ///
+    /// Returns the context under which that state will execute.
+    pub fn finish(self) -> Context {
+        let ctx = self.data.ctxw.replace_ext(&self.ctx);
+        self.data.next_frame = Some(StateFrame {
+            state: self.state,
+            ctx: ctx.clone(),
+            listener: self.listener,
+        });
+        self.data.task.notify();
+        ctx
+    }
+
+    /// Adds a listener to the transition request.
+    ///
+    /// Returns a promise which will resolve with the result of the state when
+    /// its execution completes.
+    pub fn listen<T: Send + Sync>(&mut self) -> Promise<T> {
+        self.listener.listen()
+    }
+}
+
+/// The data and objects needed to execute a state in the state machine.
+pub struct StateFrame<S: StateType> {
+    /// The state to execute.
+    pub state: S,
+    /// The context in which to execute the state.
+    pub ctx: Context,
+
+    listener: ListenerBox,
+}
+
+impl<S: StateType> StateFrame<S> {
+    /// Indicates that the state is finished executing and provides its result
+    /// to any tasks that are waiting for it.
+    pub fn resolve<T: 'static>(&mut self, result: T) {
+        self.listener.resolve(result);
+    }
+}
+
+// impl<S: StateType> StateFrame<S> {
+//     pub fn resolve<T: 'static>(&mut self, result: T) {
+//         self.listener.resolve(result);
+//     }
+// }
+
+// impl<S: StateType> StateFrame<S> {
+//     fn listen<T: Send + Sync>(&mut self) -> Promise<T> {
+//         // let (promise, resolve) = Promise::new();
+//         // let frame = ListeningStateFrame {
+//         //     state: self.state,
+//         //     ctx: self.ctx,
+//         //     resolve: Some(resolve),
+//         //     _varaince: variance(),
+//         // };
+//         let promise = self.listener.listen()
+//     }
+// }
+
+// impl<S: StateType> StateFrame<S> for BasicStateFrame<S> {
+//     fn state(&self) -> &S {
+//         &self.state
+//     }
+
+//     fn context(&self) -> &Context {
+//         &self.ctx
+//     }
+// }
+
+// pub struct ListeningStateFrame<S: StateType, T: Send + Sync, F: FnOnce(T) +
+// Send + Sync> {     state: S,
+//     ctx: Context,
+//     resolve: Option<F>,
+//     _varaince: Contravariant<T>,
+// }
+
+// impl<S: StateType, T: Send + Sync, F: FnOnce(T) + Send + Sync> StateFrame<S>
+//     for ListeningStateFrame<S, T, F>
+// {
+//     fn state(&self) -> &S {
+//         &self.state
+//     }
+
+//     fn context(&self) -> &Context {
+//         &self.ctx
+//     }
+// }
+
+struct ListenerBox(Option<Box<dyn Any + Send + Sync>>);
 
 impl ListenerBox {
-    fn clear(&mut self) {
-        self.0.take();
-    }
+    // fn clear(&mut self) {
+    //     self.0.take();
+    // }
 
     fn listen<T: Send + Sync>(&mut self) -> Promise<T> {
         if self.0.is_some() {
@@ -113,8 +281,10 @@ impl ListenerBox {
             }
         };
 
-        let inner_box: Box<dyn FnMut(T) + Send> = Box::new(f);
-        let outer_box: Box<dyn Any + Send> = Box::new(inner_box);
+        // The resolve function needs to be double-boxed as there are two unknown types
+        // (T and the closure type).
+        let inner_box: Box<dyn FnMut(T) + Send + Sync> = Box::new(f);
+        let outer_box: Box<dyn Any + Send + Sync> = Box::new(inner_box);
         self.0 = Some(outer_box);
 
         promise

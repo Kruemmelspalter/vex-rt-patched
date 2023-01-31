@@ -25,12 +25,9 @@ macro_rules! entry {
             $crate::once::Once::new();
 
         #[no_mangle]
-        unsafe extern "C" fn initialize() {
-            ROBOT.call_once(|| {
-                Competition::new($crate::robot::Robot::new(unsafe {
-                    $crate::peripherals::Peripherals::new()
-                }))
-            });
+        extern "C" fn initialize() {
+            ROBOT
+                .call_once(|| Competition::new(unsafe { $crate::peripherals::Peripherals::new() }));
         }
 
         #[no_mangle]

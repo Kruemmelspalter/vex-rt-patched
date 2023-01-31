@@ -1,4 +1,6 @@
 use alloc::{
+    format,
+    string::String,
     sync::{Arc, Weak},
     vec::Vec,
 };
@@ -12,7 +14,8 @@ use super::{
 };
 use crate::select_merge;
 
-type ContextValue = (Option<Instant>, Mutex<Option<ContextData>>);
+#[cfg(feature = "logging")]
+use super::Task;
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -40,45 +43,96 @@ impl Context {
     /// Creates a new global context (i.e., one which has no parent or
     /// deadline).
     pub fn new_global() -> Self {
-        Self::new_internal(&[], None)
+        Self::new_internal(&[], None, None)
+    }
+
+    /// Construct a new global context, with additional options.
+    pub fn new_global_ext(deadline: Option<Instant>, name: Option<String>) -> Self {
+        Self::new_internal(&[], deadline, name)
     }
 
     #[inline]
     /// Cancels a context. This is a no-op if the context is already cancelled.
     pub fn cancel(&self) {
-        cancel(&self.0.as_ref().1);
+        #[cfg(feature = "logging")]
+        log::debug!("Explicit cancel: {}", self.name());
+        cancel(&self.0.data);
+    }
+
+    /// Gets the name of the context.
+    pub fn name(&self) -> &str {
+        self.0.name()
     }
 
     /// A [`Selectable`] event which occurs when the context is
     /// cancelled. The sleep amount takes the context deadline into
     /// consideration.
     pub fn done(&'_ self) -> impl Selectable + '_ {
-        struct ContextSelect<'a>(&'a Context, EventHandle<ContextHandle>);
+        enum ContextSelect<'a> {
+            Waiting(&'a Context, EventHandle<ContextHandle>),
+            AlreadyDone,
+        }
 
         impl<'a> Selectable for ContextSelect<'a> {
             type Output = ();
 
             fn poll(self) -> Result<(), Self> {
-                let mut lock = self.0 .0 .1.lock();
-                let opt = &mut lock.as_mut();
-                if opt.is_some() {
-                    if self.0 .0 .0.map_or(false, |v| v <= time_since_start()) {
-                        opt.take();
-                        Ok(())
-                    } else {
-                        Err(self)
+                match self {
+                    ContextSelect::Waiting(ctx, _) => {
+                        let mut lock = ctx.0.data.lock();
+                        let opt = &mut lock.as_mut();
+                        if opt.is_some() {
+                            if ctx.0.deadline.map_or(false, |v| v <= time_since_start()) {
+                                #[cfg(feature = "logging")]
+                                log::trace!(
+                                    "Task {} detected timeout on context {}",
+                                    Task::current().name(),
+                                    ctx.name(),
+                                );
+
+                                opt.take();
+                                Ok(())
+                            } else {
+                                Err(self)
+                            }
+                        } else {
+                            #[cfg(feature = "logging")]
+                            log::trace!(
+                                "Task {} finished waiting on context {}",
+                                Task::current().name(),
+                                ctx.name(),
+                            );
+
+                            Ok(())
+                        }
                     }
-                } else {
-                    Ok(())
+                    ContextSelect::AlreadyDone => Ok(()),
                 }
             }
 
             fn sleep(&self) -> GenericSleep {
-                GenericSleep::NotifyTake(self.0 .0 .0)
+                match self {
+                    ContextSelect::Waiting(ctx, _) => GenericSleep::NotifyTake(ctx.0.deadline),
+                    ContextSelect::AlreadyDone => GenericSleep::Ready,
+                }
             }
         }
 
-        ContextSelect(self, handle_event(ContextHandle(Arc::downgrade(&self.0))))
+        #[cfg(feature = "logging")]
+        log::trace!(
+            "Task {} waiting on context {}",
+            Task::current().name(),
+            self.name(),
+        );
+
+        // Keep locked through call to handle_event to avoid race conditions.
+        let lock = self.0.data.lock();
+
+        if lock.is_some() {
+            ContextSelect::Waiting(self, handle_event(ContextHandle(Arc::downgrade(&self.0))))
+        } else {
+            ContextSelect::AlreadyDone
+        }
     }
 
     /// Creates a [`Selectable`] event which occurs when either the given
@@ -94,13 +148,21 @@ impl Context {
         }
     }
 
-    fn new_internal(parents: &[&Self], mut deadline: Option<Instant>) -> Self {
+    fn new_internal(
+        parents: &[&Self],
+        mut deadline: Option<Instant>,
+        name: Option<String>,
+    ) -> Self {
         deadline = parents
             .iter()
-            .filter_map(|parent| parent.0 .0)
+            .filter_map(|parent| parent.0.deadline)
             .min()
             .map_or(deadline, |d1| Some(deadline.map_or(d1, |d2| min(d1, d2))));
-        let ctx = Self(Arc::new((deadline, Mutex::new(None))));
+        let ctx = Self(Arc::new(ContextValue {
+            deadline,
+            name,
+            data: Mutex::new(None),
+        }));
         let mut parent_handles = Vec::new();
         parent_handles.reserve_exact(parents.len());
         for parent in parents {
@@ -113,7 +175,7 @@ impl Context {
                 return ctx;
             }
         }
-        *ctx.0 .1.lock() = Some(ContextData {
+        *ctx.0.data.lock() = Some(ContextData {
             _parents: parent_handles,
             event: Event::new(),
             children: Set::new(),
@@ -122,16 +184,36 @@ impl Context {
     }
 }
 
+struct ContextValue {
+    deadline: Option<Instant>,
+    name: Option<String>,
+    data: Mutex<Option<ContextData>>,
+}
+
+impl ContextValue {
+    fn name(&self) -> &str {
+        self.name.as_ref().map_or("<anon>", String::as_str)
+    }
+}
+
 /// Describes an object from which a child context can be created. Implemented
 /// for contexts and for slices of contexts.
 pub trait ParentContext {
+    /// Forks a context, with the given options. The new context's parent(s) are
+    /// `self`.
+    fn fork_ext(&self, deadline: Option<Instant>, name: Option<String>) -> Context;
+
     /// Forks a context. The new context's parent(s) are `self`.
-    fn fork(&self) -> Context;
+    fn fork(&self) -> Context {
+        self.fork_ext(None, None)
+    }
 
     /// Forks a context. Equivalent to [`Self::fork()`], except that the new
     /// context has a deadline which is the earliest of those in `self` and
     /// the one provided.
-    fn fork_with_deadline(&self, deadline: Instant) -> Context;
+    fn fork_with_deadline(&self, deadline: Instant) -> Context {
+        self.fork_ext(Some(deadline), None)
+    }
 
     /// Forks a context. Equivalent to [`Self::fork_with_deadline()`], except
     /// that the deadline is calculated from the current time and the
@@ -143,25 +225,41 @@ pub trait ParentContext {
 
 impl ParentContext for Context {
     #[inline]
+    fn fork_ext(&self, deadline: Option<Instant>, name: Option<String>) -> Context {
+        [self].fork_ext(deadline, name)
+    }
+}
+
+impl ParentContext for Option<&Context> {
     fn fork(&self) -> Context {
-        [self].fork()
+        if let Some(ctx) = self {
+            [*ctx].fork()
+        } else {
+            [].fork()
+        }
     }
 
-    #[inline]
     fn fork_with_deadline(&self, deadline: Instant) -> Context {
-        [self].fork_with_deadline(deadline)
+        if let Some(ctx) = self {
+            [*ctx].fork_with_deadline(deadline)
+        } else {
+            [].fork_with_deadline(deadline)
+        }
+    }
+
+    fn fork_ext(&self, deadline: Option<Instant>, name: Option<String>) -> Context {
+        if let Some(ctx) = self {
+            [*ctx].fork_ext(deadline, name)
+        } else {
+            [].fork_ext(deadline, name)
+        }
     }
 }
 
 impl ParentContext for [&Context] {
     #[inline]
-    fn fork(&self) -> Context {
-        Context::new_internal(self, None)
-    }
-
-    #[inline]
-    fn fork_with_deadline(&self, deadline: Instant) -> Context {
-        Context::new_internal(self, Some(deadline))
+    fn fork_ext(&self, deadline: Option<Instant>, name: Option<String>) -> Context {
+        Context::new_internal(self, deadline, name)
     }
 }
 
@@ -177,7 +275,9 @@ impl Drop for ContextData {
     fn drop(&mut self) {
         self.event.notify();
         for child in self.children.iter() {
-            cancel(&child.1)
+            #[cfg(feature = "logging")]
+            log::trace!("Indirect cancel: {}", child.name());
+            cancel(&child.data)
         }
     }
 }
@@ -189,7 +289,14 @@ impl OwnerMut<Event> for ContextHandle {
     where
         Event: 'a,
     {
-        Some(f(&mut self.0.upgrade()?.as_ref().1.lock().as_mut()?.event))
+        Some(f(&mut self
+            .0
+            .upgrade()?
+            .as_ref()
+            .data
+            .lock()
+            .as_mut()?
+            .event))
     }
 }
 
@@ -205,7 +312,7 @@ impl OwnerMut<Set<ByAddress<Arc<ContextValue>>>> for ContextHandle {
             .0
             .upgrade()?
             .as_ref()
-            .1
+            .data
             .lock()
             .as_mut()?
             .children))
@@ -218,40 +325,59 @@ fn cancel(m: &Mutex<Option<ContextData>>) {
 
 /// Provides a wrapper for [`Context`] objects which permits the management of
 /// sequential, non-overlapping contexts.
-pub struct ContextWrapper(Option<Context>);
+pub struct ContextWrapper {
+    ctx: Option<Context>,
+    name_and_count: Option<(String, usize)>,
+}
 
 impl ContextWrapper {
     #[inline]
     /// Creates a new `ContextWrapper` objects.
     pub fn new() -> Self {
-        Self(None)
+        Self {
+            ctx: None,
+            name_and_count: None,
+        }
+    }
+
+    /// Creates a new `ContextWrapper` object with the given properties.
+    pub fn new_ext(name: Option<String>) -> Self {
+        Self {
+            ctx: None,
+            name_and_count: name.map(|name| (name, 0)),
+        }
     }
 
     /// Gets the current context, if one exists.
     pub fn current(&self) -> Option<&Context> {
-        self.0.as_ref()
+        self.ctx.as_ref()
     }
 
     /// Cancels the last context, creating a new global context in its place
     /// (which is returned).
     pub fn replace(&mut self) -> Context {
-        if let Some(ctx) = self.0.take() {
-            ctx.cancel();
-        }
-        let ctx = Context::new_global();
-        self.0 = Some(ctx.clone());
-        ctx
+        self.replace_ext([].as_slice())
     }
 
     /// Cancels the last context, creating a new context as a child of the given
     /// context in its place.
-    pub fn replace_ext(&mut self, ctx: impl ParentContext) -> Context {
-        if let Some(ctx) = self.0.take() {
+    pub fn replace_ext(&mut self, ctx: &(impl ParentContext + ?Sized)) -> Context {
+        if let Some(ctx) = self.ctx.take() {
             ctx.cancel();
         }
-        let ctx = ctx.fork();
-        self.0 = Some(ctx.clone());
+        let ctx = ctx.fork_ext(None, self.next_name());
+        self.ctx = Some(ctx.clone());
         ctx
+    }
+
+    fn next_name(&mut self) -> Option<String> {
+        if let Some((name, count)) = &mut self.name_and_count {
+            let name = format!("{}.{}", name, count);
+            *count += 1;
+            Some(name)
+        } else {
+            None
+        }
     }
 }
 

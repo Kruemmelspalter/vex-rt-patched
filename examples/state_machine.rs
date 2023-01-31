@@ -3,7 +3,6 @@
 
 extern crate alloc;
 
-use alloc::sync::Arc;
 use core::time::Duration;
 use uom::si::{
     angle::{degree, revolution},
@@ -59,18 +58,18 @@ state_machine! {
     } = idle;
 
     /// Idle state.
-    idle(_ctx) [drive] {
-        drive.drive(0, 0).unwrap_or_else(|err| {
+    idle(_ctx) {
+        self.drive.drive(0, 0).unwrap_or_else(|err| {
             eprintln!("idle drive error: {:?}", err);
         });
     }
 
     /// Manual control state.
-    manual(ctx, mut controller: BroadcastListener<ControllerData>) [drive] {
+    manual(ctx, mut controller: BroadcastListener<ControllerData>) {
         loop {
             select! {
                 _ = ctx.done() => break,
-                data = controller.select() => drive.drive(data.left_x, data.left_y).unwrap_or_else(|err| {
+                data = controller.select() => self.drive.drive(data.left_x, data.left_y).unwrap_or_else(|err| {
                     eprintln!("manual drive error: {:?}", err);
                 }),
             };
@@ -80,8 +79,8 @@ state_machine! {
     /// Drives forward a set amount.
     ///
     /// Returns whether the movement completed successfully.
-    auto_drive(ctx, distance: Angle) [drive] -> bool {
-        let result = drive.drive_distance(distance, ctx).unwrap_or_else(|err| {
+    auto_drive(ctx, distance: Angle) -> bool {
+        let result = self.drive.drive_distance(distance, ctx).unwrap_or_else(|err| {
             eprintln!("auto drive error: {:?}", err);
             false
         });
@@ -90,14 +89,14 @@ state_machine! {
 }
 
 struct Bot {
-    controller: Arc<BroadcastWrapper<Controller>>,
+    controller: BroadcastWrapper<Controller>,
     drive: Drive,
 }
 
 impl Robot for Bot {
     fn new(p: Peripherals) -> Self {
         Bot {
-            controller: Arc::new(p.master_controller.into_broadcast().unwrap()),
+            controller: p.master_controller.into_broadcast().unwrap(),
             drive: Drive::new(DriveTrain {
                 left: p.port01.into_motor(Gearset::EighteenToOne, false).unwrap(),
                 right: p.port10.into_motor(Gearset::EighteenToOne, true).unwrap(),

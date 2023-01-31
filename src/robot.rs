@@ -37,27 +37,33 @@ pub trait Robot: Send + Sync + 'static {
 
 state_machine! {
     /// Competition state machine.
-    pub Competition<R: Robot>(robot: R) {
-        robot: R = robot,
+    pub Competition<R: Robot>(peripherals: Peripherals) {
+        robot: R = {
+            #[cfg(feature = "logging")]
+            if let Err(err) = crate::logging::StderrLogger::init_stderr(log::STATIC_MAX_LEVEL) {
+                crate::io::eprintln!("Failed to initialize logging: {:?}", err);
+            }
+            R::new(peripherals)
+        },
     } = initialize;
 
     /// Runs on initialization.
-    initialize(ctx) [robot] {
-        robot.initialize(ctx);
+    initialize(ctx) {
+        self.robot.initialize(ctx);
     }
 
     /// Runs during the autonomous period.
-    autonomous(ctx) [robot] {
-        robot.autonomous(ctx);
+    autonomous(ctx) {
+        self.robot.autonomous(ctx);
     }
 
     /// Runs during the opcontrol period.
-    opcontrol(ctx) [robot] {
-        robot.opcontrol(ctx);
+    opcontrol(ctx) {
+        self.robot.opcontrol(ctx);
     }
 
     /// Runs when the robot is disabled.
-    disabled(ctx) [robot] {
-        robot.disabled(ctx);
+    disabled(ctx) {
+        self.robot.disabled(ctx);
     }
 }

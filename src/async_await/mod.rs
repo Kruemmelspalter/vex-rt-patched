@@ -1,5 +1,8 @@
 //! RTOS-based async executor.
 
+#![cfg(feature = "async-await")]
+#![cfg_attr(docsrs, doc(cfg(feature = "async-await")))]
+
 use alloc::{
     boxed::Box,
     collections::{BTreeMap, BinaryHeap},
