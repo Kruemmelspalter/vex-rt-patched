@@ -156,7 +156,11 @@ pub fn state_begin<S: StateType>(
         }
 
         fn sleep(&self) -> crate::prelude::GenericSleep {
-            GenericSleep::NotifyTake(None)
+            if self.0.lock().next_frame.is_some() {
+                GenericSleep::Ready
+            } else {
+                GenericSleep::NotifyTake(None)
+            }
         }
     }
 
