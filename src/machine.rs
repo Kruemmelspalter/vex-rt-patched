@@ -249,13 +249,13 @@ impl ListenerBox {
 
     fn resolve<T: 'static>(&mut self, result: T) {
         if let Some(mut boxed) = self.0.take() {
-            if let Some(resolve) = boxed.downcast_mut::<Box<dyn FnMut(T) + Send>>() {
+            if let Some(resolve) = boxed.downcast_mut::<Box<dyn FnMut(T) + Send + Sync>>() {
                 resolve(result);
             } else {
                 #[cfg(feature = "logging")]
                 log::warn!(
                     "state result type does not match: expected {:?}, got {:?}",
-                    core::any::TypeId::of::<T>(),
+                    core::any::TypeId::of::<Box<dyn FnMut(T) + Send + Sync>>(),
                     boxed.type_id()
                 );
             }
