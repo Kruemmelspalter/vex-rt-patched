@@ -12,6 +12,7 @@ use crate::{
     rtos::DataSource,
 };
 
+#[repr(transparent)]
 /// A struct which represents a V5 smart port configured as a distance sensor.
 pub struct DistanceSensor {
     port: u8,

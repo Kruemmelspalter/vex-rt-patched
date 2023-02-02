@@ -27,6 +27,7 @@ use crate::{
     rtos::DataSource,
 };
 
+#[repr(transparent)]
 /// A struct which represents a V5 smart port configured as a motor.
 pub struct Motor {
     port: u8,
@@ -457,6 +458,7 @@ pub struct MotorData {
     pub voltage_limit: ElectricPotential<i32>,
 }
 
+#[repr(transparent)]
 /// Represents a group of motors.
 pub struct MotorGroup<const N: usize> {
     motors: [Motor; N],

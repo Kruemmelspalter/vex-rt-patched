@@ -126,8 +126,6 @@ impl<S: StateType> StateMachineData<S> {
         #[cfg(feature = "logging")]
         log::trace!(target: S::STATE_MACHINE_NAME, "requesting {}", state.name());
 
-        // self.state = state;
-        // let ctx = self.ctxw.replace_ext(&ctx);
         TransitionBuilder {
             state,
             ctx,
@@ -217,61 +215,10 @@ impl<S: StateType> StateFrame<S> {
     }
 }
 
-// impl<S: StateType> StateFrame<S> {
-//     pub fn resolve<T: 'static>(&mut self, result: T) {
-//         self.listener.resolve(result);
-//     }
-// }
-
-// impl<S: StateType> StateFrame<S> {
-//     fn listen<T: Send + Sync>(&mut self) -> Promise<T> {
-//         // let (promise, resolve) = Promise::new();
-//         // let frame = ListeningStateFrame {
-//         //     state: self.state,
-//         //     ctx: self.ctx,
-//         //     resolve: Some(resolve),
-//         //     _varaince: variance(),
-//         // };
-//         let promise = self.listener.listen()
-//     }
-// }
-
-// impl<S: StateType> StateFrame<S> for BasicStateFrame<S> {
-//     fn state(&self) -> &S {
-//         &self.state
-//     }
-
-//     fn context(&self) -> &Context {
-//         &self.ctx
-//     }
-// }
-
-// pub struct ListeningStateFrame<S: StateType, T: Send + Sync, F: FnOnce(T) +
-// Send + Sync> {     state: S,
-//     ctx: Context,
-//     resolve: Option<F>,
-//     _varaince: Contravariant<T>,
-// }
-
-// impl<S: StateType, T: Send + Sync, F: FnOnce(T) + Send + Sync> StateFrame<S>
-//     for ListeningStateFrame<S, T, F>
-// {
-//     fn state(&self) -> &S {
-//         &self.state
-//     }
-
-//     fn context(&self) -> &Context {
-//         &self.ctx
-//     }
-// }
-
+#[repr(transparent)]
 struct ListenerBox(Option<Box<dyn Any + Send + Sync>>);
 
 impl ListenerBox {
-    // fn clear(&mut self) {
-    //     self.0.take();
-    // }
-
     fn listen<T: Send + Sync>(&mut self) -> Promise<T> {
         if self.0.is_some() {
             panic!("cannot override listener")

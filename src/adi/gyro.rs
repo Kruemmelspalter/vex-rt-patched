@@ -6,6 +6,7 @@ use crate::{
     rtos::DataSource,
 };
 
+#[repr(transparent)]
 /// A struct which represents a V5 ADI port configured to be an ADI gyro.
 pub struct AdiGyro {
     port: bindings::ext_adi_gyro_t,

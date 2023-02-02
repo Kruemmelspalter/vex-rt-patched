@@ -67,7 +67,7 @@ impl Context {
     /// A [`Selectable`] event which occurs when the context is
     /// cancelled. The sleep amount takes the context deadline into
     /// consideration.
-    pub fn done(&'_ self) -> impl Selectable + '_ {
+    pub fn done(&'_ self) -> impl Selectable<Output = ()> + '_ {
         enum ContextSelect<'a> {
             Waiting(&'a Context, EventHandle<ContextHandle>),
             AlreadyDone,
@@ -231,22 +231,6 @@ impl ParentContext for Context {
 }
 
 impl ParentContext for Option<&Context> {
-    fn fork(&self) -> Context {
-        if let Some(ctx) = self {
-            [*ctx].fork()
-        } else {
-            [].fork()
-        }
-    }
-
-    fn fork_with_deadline(&self, deadline: Instant) -> Context {
-        if let Some(ctx) = self {
-            [*ctx].fork_with_deadline(deadline)
-        } else {
-            [].fork_with_deadline(deadline)
-        }
-    }
-
     fn fork_ext(&self, deadline: Option<Instant>, name: Option<String>) -> Context {
         if let Some(ctx) = self {
             [*ctx].fork_ext(deadline, name)
@@ -282,6 +266,7 @@ impl Drop for ContextData {
     }
 }
 
+#[repr(transparent)]
 struct ContextHandle(Weak<ContextValue>);
 
 impl OwnerMut<Event> for ContextHandle {

@@ -12,6 +12,7 @@ use crate::{
 };
 use core::convert::{TryFrom, TryInto};
 
+#[derive(Debug)]
 /// A struct which represents an unconfigured smart port.
 pub struct SmartPort {
     port: u8,

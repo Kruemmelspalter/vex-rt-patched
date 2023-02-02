@@ -4,8 +4,7 @@ use alloc::sync::{Arc, Weak};
 use owner_monad::OwnerMut;
 
 use super::{
-    handle_event, select, Context, Event, EventHandle, GenericSleep, Instant, Mutex, Selectable,
-    Task,
+    handle_event, select, Context, Event, EventHandle, GenericSleep, Mutex, Selectable, Task,
 };
 use crate::{error::Error, select};
 
@@ -70,7 +69,7 @@ impl<T: Send + Sync + 'static> Promise<T> {
             #[inline]
             fn sleep(&self) -> GenericSleep {
                 if self.handle.is_done() {
-                    GenericSleep::Timestamp(Instant::from_millis(0))
+                    GenericSleep::Ready
                 } else {
                     GenericSleep::NotifyTake(None)
                 }

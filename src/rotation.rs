@@ -9,8 +9,9 @@ use uom::si::angle::degree;
 use uom::si::angular_velocity::degree_per_second;
 use uom::si::f64::{Angle, AngularVelocity};
 
-/// A struct which represents a V5 smart port configured as a rotation sensor.
 #[derive(Debug)]
+#[repr(transparent)]
+/// A struct which represents a V5 smart port configured as a rotation sensor.
 pub struct RotationSensor {
     port: u8,
 }

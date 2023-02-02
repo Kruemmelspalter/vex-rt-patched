@@ -4,6 +4,7 @@ use crate::{
     rtos::DataSource,
 };
 
+#[repr(transparent)]
 /// Represents a V5 ADI port pair configured as an ultrasonic sensor.
 pub struct AdiUltrasonic {
     port: bindings::ext_adi_ultrasonic_t,

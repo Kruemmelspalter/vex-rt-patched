@@ -122,6 +122,7 @@ impl<T> From<T> for Mutex<T> {
     }
 }
 
+#[repr(transparent)]
 /// Provides exclusive access to an object controlled by a [`Mutex`] via the
 /// RAII pattern.
 ///

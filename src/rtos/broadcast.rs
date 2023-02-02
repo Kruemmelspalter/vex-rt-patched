@@ -6,6 +6,7 @@ use owner_monad::{Owner, OwnerMut};
 use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable};
 use crate::error::Error;
 
+#[repr(transparent)]
 /// Represents a source of data which notifies listeners on a new value.
 pub struct Broadcast<T: Clone>(Arc<Mutex<BroadcastData<T>>>);
 

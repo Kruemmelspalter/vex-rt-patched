@@ -5,6 +5,7 @@ use queue_model::QueueModel;
 use super::{handle_event, Event, EventHandle, GenericSleep, Mutex, Selectable};
 use crate::error::Error;
 
+#[repr(transparent)]
 /// Represents the sending end of a message-passing queue.
 pub struct SendQueue<T>(Arc<dyn QueueShared<T> + Send + Sync>);
 
@@ -22,6 +23,7 @@ impl<T> Clone for SendQueue<T> {
     }
 }
 
+#[repr(transparent)]
 /// Represents the receive end of a message-passing queue.
 pub struct ReceiveQueue<T>(Arc<dyn QueueShared<T> + Send + Sync>);
 
@@ -81,6 +83,7 @@ pub fn queue<Q: 'static + QueueModel + Send + Sync>(queue: Q) -> QueuePair<Q> {
 /// Creates a new send-receive pair together representing a message-passing
 /// queue, based on the given underlying queue structure.
 pub fn try_queue<Q: 'static + QueueModel + Send + Sync>(queue: Q) -> Result<QueuePair<Q>, Error> {
+    #[repr(transparent)]
     struct Queue<Q: QueueModel>(Mutex<QueueData<Q>>);
 
     impl<Q: QueueModel> QueueShared<Q::Item> for Queue<Q> {
@@ -129,6 +132,7 @@ trait QueueShared<T> {
     fn with_event<'a>(&'a self, f: &'a mut dyn FnMut(&mut Event));
 }
 
+#[repr(transparent)]
 struct ReceiveWrapper<'b, T>(&'b dyn QueueShared<T>);
 
 impl<'b, T> OwnerMut<Event> for ReceiveWrapper<'b, T> {

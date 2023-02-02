@@ -4,6 +4,7 @@ use crate::{
     rtos::DataSource,
 };
 
+#[repr(transparent)]
 /// A struct which represents a V5 ADI port configured as an ADI encoder.
 pub struct AdiEncoder {
     port: bindings::ext_adi_encoder_t,

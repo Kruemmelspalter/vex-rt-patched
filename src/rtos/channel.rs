@@ -7,6 +7,7 @@ use super::{
 };
 use crate::error::Error;
 
+#[repr(transparent)]
 /// Represents the sending end of a rendez-vous channel.
 pub struct SendChannel<T>(Arc<ChannelShared<T>>);
 
@@ -83,6 +84,7 @@ impl<T> Clone for SendChannel<T> {
     }
 }
 
+#[repr(transparent)]
 /// Represents the receive end of a rendez-vous channel.
 pub struct ReceiveChannel<T>(Arc<ChannelShared<T>>);
 
@@ -189,6 +191,7 @@ struct ChannelData<T> {
     seq: bool,
 }
 
+#[repr(transparent)]
 struct SendWrapper<'b, T>(&'b ChannelShared<T>);
 
 impl<'b, T> OwnerMut<Event> for SendWrapper<'b, T> {
@@ -200,6 +203,7 @@ impl<'b, T> OwnerMut<Event> for SendWrapper<'b, T> {
     }
 }
 
+#[repr(transparent)]
 struct ReceiveWrapper<'b, T>(&'b ChannelShared<T>);
 
 impl<'b, T> OwnerMut<Event> for ReceiveWrapper<'b, T> {

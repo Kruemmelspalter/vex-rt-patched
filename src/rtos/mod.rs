@@ -5,7 +5,6 @@ use core::{
     cmp::min,
     convert::TryInto,
     fmt::{self, Debug, Display, Formatter},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
     time::Duration,
 };
@@ -19,11 +18,12 @@ use crate::{
 
 const TIMEOUT_MAX: u32 = 0xffffffff;
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
 /// Represents a time on a monotonically increasing clock (i.e., time since
 /// program start).
 ///
 /// This type has a precision of 1 microsecond.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Instant(u64);
 
 impl Instant {
@@ -219,6 +219,7 @@ pub fn time_since_start() -> Instant {
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[repr(transparent)]
 /// Represents a FreeRTOS task.
 pub struct Task(bindings::task_t);
 
@@ -497,9 +498,9 @@ impl GenericSleep {
     }
 }
 
+#[must_use]
 /// Represents a future event which can be used with the
 /// [`select!`](crate::select!) macro.
-#[must_use]
 pub trait Selectable: Sized {
     /// The type of the event result.
     type Output;
@@ -532,7 +533,6 @@ pub fn select_map<'a, T: 'a, U: 'a>(
     struct MapSelect<U, E: Selectable, F: FnOnce(E::Output) -> U> {
         event: E,
         f: F,
-        _t: PhantomData<E::Output>,
     }
 
     impl<U, E: Selectable, F: FnOnce(E::Output) -> U> Selectable for MapSelect<U, E, F> {
@@ -549,11 +549,7 @@ pub fn select_map<'a, T: 'a, U: 'a>(
         }
     }
 
-    MapSelect {
-        event,
-        f,
-        _t: PhantomData,
-    }
+    MapSelect { event, f }
 }
 
 #[inline]
@@ -563,16 +559,10 @@ pub fn select_either<'a, T: 'a>(
     fst: impl Selectable<Output = T> + 'a,
     snd: impl Selectable<Output = T> + 'a,
 ) -> impl Selectable<Output = T> + 'a {
-    struct EitherSelect<T, E1: Selectable<Output = T>, E2: Selectable<Output = T>>(
-        E1,
-        E2,
-        PhantomData<T>,
-    );
+    struct EitherSelect<E1: Selectable, E2: Selectable<Output = E1::Output>>(E1, E2);
 
-    impl<T, E1: Selectable<Output = T>, E2: Selectable<Output = T>> Selectable
-        for EitherSelect<T, E1, E2>
-    {
-        type Output = T;
+    impl<E1: Selectable, E2: Selectable<Output = E1::Output>> Selectable for EitherSelect<E1, E2> {
+        type Output = E1::Output;
 
         fn poll(self) -> Result<Self::Output, Self> {
             Err(Self(
@@ -584,7 +574,6 @@ pub fn select_either<'a, T: 'a>(
                     Ok(r) => return Ok(r),
                     Err(e) => e,
                 },
-                PhantomData,
             ))
         }
         fn sleep(&self) -> GenericSleep {
@@ -592,7 +581,7 @@ pub fn select_either<'a, T: 'a>(
         }
     }
 
-    EitherSelect(fst, snd, PhantomData)
+    EitherSelect(fst, snd)
 }
 
 #[inline]
@@ -648,23 +637,21 @@ pub fn select_both<'a, T: 'a, U: 'a>(
 pub fn select_option<'a, T: 'a>(
     base: Option<impl Selectable<Output = T> + 'a>,
 ) -> impl Selectable<Output = T> + 'a {
-    struct OptionSelect<E: Selectable>(Option<E>, PhantomData<E::Output>);
+    #[repr(transparent)]
+    struct OptionSelect<E: Selectable>(Option<E>);
 
     impl<E: Selectable> Selectable for OptionSelect<E> {
         type Output = E::Output;
 
         fn poll(self) -> Result<Self::Output, Self> {
-            Err(Self(
-                if let Some(e) = self.0 {
-                    match e.poll() {
-                        Ok(r) => return Ok(r),
-                        Err(e) => Some(e),
-                    }
-                } else {
-                    None
-                },
-                PhantomData,
-            ))
+            Err(Self(if let Some(e) = self.0 {
+                match e.poll() {
+                    Ok(r) => return Ok(r),
+                    Err(e) => Some(e),
+                }
+            } else {
+                None
+            }))
         }
 
         fn sleep(&self) -> GenericSleep {
@@ -674,7 +661,7 @@ pub fn select_option<'a, T: 'a>(
         }
     }
 
-    OptionSelect(base, PhantomData)
+    OptionSelect(base)
 }
 
 #[inline]
@@ -692,13 +679,14 @@ pub fn select<'a, T: 'a>(mut event: impl Selectable<Output = T> + 'a) -> T {
 #[inline]
 /// Creates a new [`Selectable`] event which completes after the given duration
 /// of time.
-pub fn delay(time: Duration) -> impl Selectable {
+pub fn delay(time: Duration) -> impl Selectable<Output = ()> {
     delay_until(time_since_start() + time)
 }
 
 #[inline]
 /// Creates a new [`Selectable`] event which completes at the given timestamp.
-pub fn delay_until(timestamp: Instant) -> impl Selectable {
+pub fn delay_until(timestamp: Instant) -> impl Selectable<Output = ()> {
+    #[repr(transparent)]
     struct DelaySelect(Instant);
 
     impl Selectable for DelaySelect {

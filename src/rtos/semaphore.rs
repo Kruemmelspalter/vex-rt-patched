@@ -5,6 +5,7 @@ use crate::{
     error::{from_errno, Error, SentinelError},
 };
 
+#[repr(transparent)]
 /// Represents a FreeRTOS counting semaphore.
 pub struct Semaphore(bindings::sem_t);
 

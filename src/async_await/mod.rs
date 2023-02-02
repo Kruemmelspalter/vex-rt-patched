@@ -146,6 +146,7 @@ impl<'a> From<&LocalBoxFuture<'a, ()>> for WakeRef {
 unsafe impl Send for WakeRef {}
 unsafe impl Sync for WakeRef {}
 
+#[repr(transparent)]
 /// Provides a means to dispatch tasks to an executor.
 pub struct Dispatcher(SendQueue<(u16, Dispatch)>);
 

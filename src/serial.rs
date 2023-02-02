@@ -8,6 +8,7 @@ use crate::{
     smart_port::{smart_port_type, DeviceType},
 };
 
+#[repr(transparent)]
 /// Represents the generic serial interface of a smart port.
 pub struct Serial(u8);
 

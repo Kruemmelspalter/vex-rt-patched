@@ -60,6 +60,7 @@ impl<O: OwnerMut<Event>> Owner<O> for EventHandle<O> {
     }
 }
 
+#[repr(transparent)]
 struct EventHandleOwner<O: OwnerMut<Event>>(O);
 
 impl<O: OwnerMut<Event>> OwnerMut<Set<Task>> for EventHandleOwner<O> {

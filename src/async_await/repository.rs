@@ -88,6 +88,7 @@ impl Repository {
     }
 }
 
+#[repr(transparent)]
 struct Proxy<E: Selectable<Output = ()>>(Option<E>);
 
 impl<E: Selectable<Output = ()>> SelectProxy for Proxy<E> {
@@ -101,6 +102,7 @@ impl<E: Selectable<Output = ()>> SelectProxy for Proxy<E> {
     }
 }
 
+#[repr(transparent)]
 struct RepoRef<'a>(&'a Repository);
 
 impl<'a> OwnerMut<Map<*mut dyn SelectProxy, bool>> for RepoRef<'a> {

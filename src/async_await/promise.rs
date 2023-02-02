@@ -7,6 +7,7 @@ use core::{
 use futures::Future;
 use replace_with::{replace_with_or_abort, replace_with_or_abort_and_return};
 
+#[repr(transparent)]
 /// A thread-local promise with a separate resolve function whose lifetime is
 /// not constrained to that of the promise.
 pub struct Promise<T>(Rc<RefCell<PromiseState<T>>>);
