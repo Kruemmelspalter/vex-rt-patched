@@ -1,6 +1,11 @@
 //! Support for synchronous and asynchronous state machines.
 
-use alloc::{boxed::Box, string::ToString, sync::Arc};
+use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    sync::Arc,
+};
 use core::{
     any::Any,
     marker::{Send, Sync},
@@ -193,7 +198,8 @@ impl<'a, S: StateType> TransitionBuilder<'a, S> {
     /// Returns a promise which will resolve with the result of the state when
     /// its execution completes.
     pub fn listen<T: Send + Sync>(&mut self) -> Promise<T> {
-        self.listener.listen()
+        self.listener
+            .listen(format!("{}/{}", S::STATE_MACHINE_NAME, self.state.name()))
     }
 }
 
@@ -219,12 +225,12 @@ impl<S: StateType> StateFrame<S> {
 struct ListenerBox(Option<Box<dyn Any + Send + Sync>>);
 
 impl ListenerBox {
-    fn listen<T: Send + Sync>(&mut self) -> Promise<T> {
+    fn listen<T: Send + Sync>(&mut self, name: String) -> Promise<T> {
         if self.0.is_some() {
             panic!("cannot override listener")
         }
 
-        let (promise, resolve) = Promise::new();
+        let (promise, resolve) = Promise::new_ext(Some(name));
         let mut resolve = Some(resolve);
         let f = move |result| {
             if let Some(resolve) = resolve.take() {

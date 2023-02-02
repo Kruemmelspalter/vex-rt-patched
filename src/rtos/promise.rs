@@ -1,6 +1,9 @@
 use core::cell::UnsafeCell;
 
-use alloc::sync::{Arc, Weak};
+use alloc::{
+    string::String,
+    sync::{Arc, Weak},
+};
 use owner_monad::OwnerMut;
 
 use super::{
@@ -9,7 +12,7 @@ use super::{
 use crate::{error::Error, select};
 
 /// Represents an ongoing operation which produces a result.
-pub struct Promise<T: 'static = ()>(Arc<Mutex<PromiseData<T>>>);
+pub struct Promise<T: 'static = ()>(Arc<(Mutex<PromiseData<T>>, Option<String>)>);
 
 impl<T: Send + Sync + 'static> Promise<T> {
     /// Creates a new lightweight promise and an associated resolve function.
@@ -30,10 +33,22 @@ impl<T: Send + Sync + 'static> Promise<T> {
     /// );
     /// ```
     pub fn new() -> (Self, impl FnOnce(T) + Send) {
-        let data = Arc::new(Mutex::new(PromiseData::Incomplete(Event::new())));
+        Self::new_ext(None)
+    }
+
+    /// Creates a new lightweight promise and associated resolve function, with
+    /// the given options.
+    pub fn new_ext(name: Option<String>) -> (Self, impl FnOnce(T) + Send) {
+        let data = Arc::new((Mutex::new(PromiseData::Incomplete(Event::new())), name));
         let promise = Self(data.clone());
         let resolve = move |r: T| {
-            let mut l = data.lock();
+            #[cfg(feature = "logging")]
+            log::debug!(
+                "resolving promise: {}",
+                data.1.as_deref().unwrap_or("<anon>")
+            );
+
+            let mut l = data.0.lock();
             if let Some(e) = l.event() {
                 e.notify();
                 *l = PromiseData::Complete(r.into());
@@ -42,8 +57,13 @@ impl<T: Send + Sync + 'static> Promise<T> {
         (promise, resolve)
     }
 
+    /// Gets the name of the promise, if there is one.
+    pub fn name(&self) -> Option<&str> {
+        self.0 .1.as_deref()
+    }
+
     /// A [`Selectable`] event which occurs when the promise is resolved.
-    pub fn done(&'_ self) -> impl Selectable<Output = &'_ T> + '_ {
+    pub fn done(&self) -> impl Selectable<Output = &T> + '_ {
         struct PromiseSelect<'a, T: 'static> {
             promise: &'a Promise<T>,
             handle: EventHandle<PromiseHandle<T>>,
@@ -55,6 +75,7 @@ impl<T: Send + Sync + 'static> Promise<T> {
             fn poll(self) -> Result<Self::Output, Self> {
                 self.promise
                     .0
+                     .0
                     .lock()
                     .result()
                     // This is safe, since the promise can only be resolved once (thanks to the
@@ -171,13 +192,13 @@ unsafe impl<T: Send> Send for PromiseData<T> {}
 
 unsafe impl<T: Sync> Sync for PromiseData<T> {}
 
-struct PromiseHandle<T>(Weak<Mutex<PromiseData<T>>>);
+struct PromiseHandle<T>(Weak<(Mutex<PromiseData<T>>, Option<String>)>);
 
 impl<T> OwnerMut<Event> for PromiseHandle<T> {
     fn with<'a, U>(&'a mut self, f: impl FnOnce(&mut Event) -> U) -> Option<U>
     where
         Event: 'a,
     {
-        Some(f(self.0.upgrade()?.as_ref().lock().event()?))
+        Some(f(self.0.upgrade()?.0.lock().event()?))
     }
 }
