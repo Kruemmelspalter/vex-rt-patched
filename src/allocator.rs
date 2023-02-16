@@ -6,22 +6,22 @@ struct Alloc;
 
 unsafe impl GlobalAlloc for Alloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        __malloc_lock();
+        rtos_suspend_all();
         let mem = memalign(layout.align(), layout.size()) as *mut _;
-        __malloc_unlock();
+        rtos_resume_all();
         mem
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        __malloc_lock();
+        rtos_suspend_all();
         free(ptr as *mut _);
-        __malloc_unlock();
+        rtos_resume_all();
     }
 }
 
 extern "C" {
-    fn __malloc_lock();
-    fn __malloc_unlock();
+    fn rtos_suspend_all();
+    fn rtos_resume_all();
 }
 
 #[global_allocator]
