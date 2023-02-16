@@ -25,7 +25,6 @@ futures = { version = "0.3.25", default-features = false, features = ["alloc", "
 libc = { version = "0.2.139", default-features = false }
 libc-print = "0.1.20"
 log = { version = "0.4.17", optional = true }
-newlib-alloc = "0.1.0"
 num-traits = { version = "0.2.15", default-features = false }
 owner-monad = "0.1.0"
 queue-model = "0.1.2"
