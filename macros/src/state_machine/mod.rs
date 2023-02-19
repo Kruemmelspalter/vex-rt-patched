@@ -23,6 +23,7 @@ use crate::util::{ident_append, ident_prepend, ident_to_case, pat_to_ident};
 
 use self::input::{Input, State, Var};
 
+mod attributes;
 pub mod input;
 
 pub fn make_state_machine(input: Input) -> TokenStream {
@@ -336,6 +337,7 @@ fn gen_impl(
 ) -> ItemImpl {
     let Input {
         crate_,
+        stack_depth,
         ident,
         generics,
         args,
@@ -640,6 +642,12 @@ fn gen_impl(
         })
         .into_iter();
 
+    let stack_depth = if let Some(attr) = stack_depth {
+        attr.expr.clone()
+    } else {
+        parse_quote!(#crate_::rtos::Task::DEFAULT_STACK_DEPTH)
+    };
+
     let mut items = vec![ImplItem::Method(ImplItemMethod {
         attrs: vec![parse_quote! {
             /// Constructs a new instance of the state machine.
@@ -682,7 +690,7 @@ fn gen_impl(
             let task__ = #crate_::rtos::Task::spawn_ext(
                 #task_name,
                 #crate_::rtos::Task::DEFAULT_PRIORITY,
-                #crate_::rtos::Task::DEFAULT_STACK_DEPTH * 4,
+                #stack_depth,
                 move || run__(data__, #vars_val),
             ).unwrap();
             lock__.set_task(task__);

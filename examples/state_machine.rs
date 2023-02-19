@@ -53,6 +53,7 @@ impl DriveTrain {
 
 state_machine! {
     /// Test
+    #[stack_depth = 4096]
     Drive(drive: DriveTrain) {
         drive: DriveTrain = drive,
     } = idle;

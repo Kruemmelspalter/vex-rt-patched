@@ -2,6 +2,7 @@ use itertools::Itertools;
 use syn::{
     braced, parenthesized,
     parse::{Nothing, Parse, ParseBuffer, ParseStream},
+    parse2, parse_quote,
     punctuated::Punctuated,
     spanned::Spanned,
     token::{Brace, Paren},
@@ -9,11 +10,14 @@ use syn::{
     Visibility,
 };
 
+use super::attributes::StackDepthAttr;
+
 #[derive(Clone, Debug)]
 pub struct Input {
     pub crate_: Path,
     pub semi_token: Token![;],
     pub attrs: Vec<Attribute>,
+    pub stack_depth: Option<StackDepthAttr>,
     pub vis: Visibility,
     pub ident: Ident,
     pub generics: Generics,
@@ -25,10 +29,28 @@ pub struct Input {
 
 impl Parse for Input {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let crate_ = Path::parse(input)?;
+        let semi_token = Parse::parse(input)?;
+        let mut attrs = Attribute::parse_outer(input)?;
+
+        let stack_depth = if let Some((i, attr)) = attrs
+            .iter()
+            .enumerate()
+            .find(|(_i, attr)| attr.path == parse_quote!(stack_depth))
+        {
+            let attr: StackDepthAttr = parse2(attr.tokens.clone()).unwrap();
+            attrs.remove(i);
+            Some(attr)
+        } else {
+            // parse_quote!(#crate_::rtos::Task::DEFAULT_STACK_DEPTH)
+            None
+        };
+
         Ok(Self {
-            crate_: Path::parse(input)?,
-            semi_token: Parse::parse(input)?,
-            attrs: Attribute::parse_outer(input)?,
+            crate_,
+            semi_token,
+            attrs,
+            stack_depth,
             vis: Visibility::parse(input)?,
             ident: Ident::parse(input)?,
             generics: Generics::parse(input)?,
