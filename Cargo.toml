@@ -1,6 +1,6 @@
 [package]
 name = "vex-rt"
-version = "1.0.0-rc.8"
+version = "1.0.0-rc.9"
 authors = [
     "Timothy Morland <me@timothy-morland.com>",
     "Nick Mertin <nickmertin@gmail.com>",
@@ -33,7 +33,7 @@ rcstring = "0.2.1"
 replace_with = { version = "0.1.7", default-features = false, features = ["nightly"], optional = true }
 slice-copy = "0.3.0"
 spin = "0.9.4"
-uom = { version = "0.34.0", default-features = false, features = ["f64", "i32", "si", "try-from"] }
+uom = { version = "0.33.0", default-features = false, features = ["f64", "i32", "si", "try-from"] }
 vex-rt-macros = { version = "1.0.0-rc.4", path = "macros" }
 
 [build-dependencies]
