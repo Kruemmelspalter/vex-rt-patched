@@ -5,8 +5,10 @@
 #![feature(alloc_error_handler)]
 #![feature(array_methods)]
 #![feature(array_try_map)]
+#![feature(generic_const_exprs)]
 #![feature(negative_impls)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![allow(incomplete_features)]
 #![warn(missing_docs, unused_import_braces)]
 
 #[doc(hidden)]
@@ -40,8 +42,6 @@ pub mod smart_port;
 
 #[doc(hidden)]
 pub use spin::once;
-
-pub use uom;
 
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {

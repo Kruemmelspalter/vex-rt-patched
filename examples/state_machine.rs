@@ -1,13 +1,14 @@
 #![no_std]
 #![no_main]
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
 
 extern crate alloc;
 
 use core::time::Duration;
-use uom::si::{
-    angle::{degree, revolution},
-    angular_velocity::revolution_per_minute,
-    f64::{Angle, AngularVelocity},
+use qunit::{
+    angle::{Angle, AngleExt},
+    angular_velocity::AngularVelocityExt,
 };
 use vex_rt::{prelude::*, state_machine};
 
@@ -31,13 +32,13 @@ impl DriveTrain {
     }
 
     fn drive_distance(&mut self, distance: Angle, ctx: Context) -> Result<bool, MotorError> {
-        let velocity = AngularVelocity::new::<revolution_per_minute>(100.0);
+        let velocity = 100.0.rpm();
         self.left.move_relative(distance, velocity)?;
         self.right.move_relative(distance, velocity)?;
 
         let mut pause = Loop::new(Duration::from_millis(10));
 
-        let threshold = Angle::new::<degree>(1.0);
+        let threshold = 1.0.deg();
         while (self.left.get_position()? - self.left.get_target_position()?).abs() >= threshold
             || (self.right.get_position()? - self.right.get_target_position()?).abs() >= threshold
         {
@@ -107,10 +108,9 @@ impl Robot for Bot {
 
     fn autonomous(&mut self, ctx: Context) {
         // Tells the drive to move a given distance, with a time limit of 1 second.
-        let auto = self.drive.auto_drive_ext(
-            ctx.fork_with_timeout(Duration::from_secs(1)),
-            Angle::new::<revolution>(1.0),
-        );
+        let auto = self
+            .drive
+            .auto_drive_ext(ctx.fork_with_timeout(Duration::from_secs(1)), 1.0.rev());
 
         select! {
             success = auto.done() => if *success {

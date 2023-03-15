@@ -28,17 +28,17 @@ log = { version = "0.4.17", optional = true }
 num-traits = { version = "0.2.15", default-features = false }
 owner-monad = "0.1.0"
 queue-model = "0.1.2"
+qunit = { version = "0.1.0-beta.3", default-features = false, features = ["math", "libm"] }
 raii-map = "0.1.0"
 rcstring = "0.2.1"
 replace_with = { version = "0.1.7", default-features = false, features = ["nightly"], optional = true }
 slice-copy = "0.3.0"
 spin = "0.9.4"
-uom = { version = "0.33.0", default-features = false, features = ["f64", "i32", "si", "try-from"] }
 vex-rt-macros = { version = "1.0.0-rc.4", path = "macros" }
 
 [build-dependencies]
 bindgen = "0.64.0"
-zip = "0.6.3"
+zip = { version = "0.6.3", default-features = false }
 zip-extensions = "0.6.1"
 
 [dev-dependencies]

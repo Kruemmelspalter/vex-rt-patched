@@ -2,7 +2,7 @@
 #![no_main]
 
 use core::time::Duration;
-use uom::si::{angular_velocity::revolution_per_minute, f64::AngularVelocity};
+use qunit::angular_velocity::AngularVelocityExt;
 use vex_rt::prelude::*;
 
 struct DriveTrain {
@@ -62,7 +62,7 @@ impl Bot {
     fn grip(&mut self, speed: i8) -> Result<(), MotorError> {
         let mut flag: u8 = 0;
         self.claw.0.move_i8(speed)?;
-        let threshold = AngularVelocity::new::<revolution_per_minute>(10.0);
+        let threshold = 10.0.rpm();
         while flag < 5 {
             flag = match self.claw.0.get_actual_velocity() {
                 Ok(v) if (v > -threshold && v < threshold) => flag + 1,
