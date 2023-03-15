@@ -1,13 +1,15 @@
 //! # Rotation Sensor API.
 
+use qunit::{
+    angle::{Angle, AngleExt},
+    angular_velocity::{AngularVelocity, AngularVelocityExt},
+};
+
 use crate::{
     bindings,
     error::{get_errno, Error},
     rtos::DataSource,
 };
-use uom::si::angle::degree;
-use uom::si::angular_velocity::degree_per_second;
-use uom::si::f64::{Angle, AngularVelocity};
 
 #[derive(Debug)]
 #[repr(transparent)]
@@ -43,9 +45,7 @@ impl RotationSensor {
 
     /// Set the Rotation sensor to a desired rotation value.
     pub fn set_position(&mut self, rotation: Angle) -> Result<(), RotationSensorError> {
-        match unsafe {
-            bindings::rotation_set_position(self.port, (rotation.get::<degree>() * 100f64) as u32)
-        } {
+        match unsafe { bindings::rotation_set_position(self.port, (rotation.to_cdeg()) as u32) } {
             bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
             _ => Ok(()),
         }
@@ -64,7 +64,7 @@ impl RotationSensor {
     pub fn get_position(&self) -> Result<Angle, RotationSensorError> {
         match unsafe { bindings::rotation_get_position(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
-            x => Ok(Angle::new::<degree>(x as f64 * 0.01)),
+            x => Ok((x as f64).cdeg()),
         }
     }
 
@@ -72,7 +72,7 @@ impl RotationSensor {
     pub fn get_velocity(&self) -> Result<AngularVelocity, RotationSensorError> {
         match unsafe { bindings::rotation_get_velocity(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
-            x => Ok(AngularVelocity::new::<degree_per_second>(x as f64 * 0.01)),
+            x => Ok((x as f64).cdegps()),
         }
     }
 
@@ -80,7 +80,7 @@ impl RotationSensor {
     pub fn get_angle(&self) -> Result<Angle, RotationSensorError> {
         match unsafe { bindings::rotation_get_angle(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(RotationSensorError::from_errno()),
-            x => Ok(Angle::new::<degree>(x as f64 * 0.01)),
+            x => Ok((x as f64).cdeg()),
         }
     }
 

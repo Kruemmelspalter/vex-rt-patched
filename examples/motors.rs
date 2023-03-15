@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use uom::si::{angular_velocity::revolution_per_minute, f64::AngularVelocity};
+use qunit::angular_velocity::{AngularVelocity, AngularVelocityExt};
 use vex_rt::prelude::*;
 
 struct DriveTrain {
@@ -22,20 +22,16 @@ impl DriveTrain {
     }
 
     fn spin(&mut self) {
-        self.left_drive
-            .move_velocity(AngularVelocity::new::<revolution_per_minute>(30.0))
-            .unwrap();
-        self.right_drive
-            .move_velocity(AngularVelocity::new::<revolution_per_minute>(-30.0))
-            .unwrap();
+        self.left_drive.move_velocity(30.0.rpm()).unwrap();
+        self.right_drive.move_velocity((-30.0).rpm()).unwrap();
     }
 
     fn stop(&mut self) {
         self.left_drive
-            .move_velocity(AngularVelocity::new::<revolution_per_minute>(0.0))
+            .move_velocity(AngularVelocity::ZERO)
             .unwrap();
         self.right_drive
-            .move_velocity(AngularVelocity::new::<revolution_per_minute>(0.0))
+            .move_velocity(AngularVelocity::ZERO)
             .unwrap();
     }
 }

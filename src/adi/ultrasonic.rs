@@ -1,3 +1,5 @@
+use qunit::length::{Length, LengthExt};
+
 use crate::{
     bindings,
     error::{get_errno, Error},
@@ -29,17 +31,17 @@ impl AdiUltrasonic {
     }
 
     /// Gets the current value of the ultrasonic sensor.
-    pub fn get(&self) -> Result<u32, AdiUltrasonicError> {
+    pub fn get(&self) -> Result<Length, AdiUltrasonicError> {
         match unsafe { bindings::ext_adi_ultrasonic_get(self.port) } {
             bindings::PROS_ERR_ => Err(AdiUltrasonicError::from_errno()),
             r if r < 0 => Err(AdiUltrasonicError::NoReading),
-            r => Ok(r as u32),
+            r => Ok((r as f64).cm()),
         }
     }
 }
 
 impl DataSource for AdiUltrasonic {
-    type Data = u32;
+    type Data = Length;
 
     type Error = AdiUltrasonicError;
 

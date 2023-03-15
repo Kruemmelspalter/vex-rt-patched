@@ -20,7 +20,7 @@ impl Robot for UltrasonicBot {
         loop {
             match self.sensor.get() {
                 Ok(r) => {
-                    println!("{}", r);
+                    println!("{:?}", r);
                 }
                 Err(AdiUltrasonicError::NoReading) => {
                     println!("<no reading>");

@@ -6,19 +6,15 @@ use core::{
     slice::{Iter, IterMut},
 };
 
-use uom::si::{
-    angle::revolution,
-    angular_velocity::revolution_per_minute,
-    electric_current::milliampere,
-    electric_potential::{millivolt, volt},
-    f64::{
-        Angle, AngularVelocity, ElectricCurrent, Power, Ratio, ThermodynamicTemperature, Torque,
-    },
-    power::watt,
-    quantities::ElectricPotential,
-    ratio::percent,
-    thermodynamic_temperature::degree_celsius,
-    torque::newton_meter,
+use num_traits::real::Real;
+use qunit::{
+    angle::{Angle, AngleExt},
+    angular_velocity::{AngularVelocity, AngularVelocityExt},
+    current::{Current, CurrentExt},
+    power::{Power, PowerExt},
+    ratio::{Ratio, RatioExt},
+    torque::{Torque, TorqueExt},
+    voltage::{Voltage, VoltageExt},
 };
 
 use crate::{
@@ -80,11 +76,7 @@ impl Motor {
         velocity: AngularVelocity,
     ) -> Result<(), MotorError> {
         match unsafe {
-            bindings::motor_move_absolute(
-                self.port,
-                position.get::<revolution>(),
-                velocity.get::<revolution_per_minute>() as i32,
-            )
+            bindings::motor_move_absolute(self.port, position.to_rev(), velocity.to_rpm() as i32)
         } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
@@ -106,11 +98,7 @@ impl Motor {
         velocity: AngularVelocity,
     ) -> Result<(), MotorError> {
         match unsafe {
-            bindings::motor_move_relative(
-                self.port,
-                position.get::<revolution>(),
-                velocity.get::<revolution_per_minute>() as i32,
-            )
+            bindings::motor_move_relative(self.port, position.to_rev(), velocity.to_rpm() as i32)
         } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
@@ -125,18 +113,15 @@ impl Motor {
     /// ±600 RPM for [`Gearset::SixToOne`]. The velocity is held with PID to
     /// ensure consistent speed.
     pub fn move_velocity(&mut self, velocity: AngularVelocity) -> Result<(), MotorError> {
-        match unsafe {
-            bindings::motor_move_velocity(self.port, velocity.get::<revolution_per_minute>() as i32)
-        } {
+        match unsafe { bindings::motor_move_velocity(self.port, velocity.to_rpm() as i32) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
     }
 
     /// Sets the output voltage for the motor from -12 V to 12 V.
-    pub fn move_voltage(&mut self, voltage: ElectricPotential<f64>) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_move_voltage(self.port, voltage.get::<millivolt>() as i32) }
-        {
+    pub fn move_voltage(&mut self, voltage: Voltage) -> Result<(), MotorError> {
+        match unsafe { bindings::motor_move_voltage(self.port, voltage.to_mV() as i32) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -150,10 +135,7 @@ impl Motor {
         velocity: AngularVelocity,
     ) -> Result<(), MotorError> {
         match unsafe {
-            bindings::motor_modify_profiled_velocity(
-                self.port,
-                velocity.get::<revolution_per_minute>() as i32,
-            )
+            bindings::motor_modify_profiled_velocity(self.port, velocity.to_rpm() as i32)
         } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
@@ -164,7 +146,7 @@ impl Motor {
     pub fn get_target_position(&self) -> Result<Angle, MotorError> {
         match unsafe { bindings::motor_get_target_position(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(Angle::new::<revolution>(x)),
+            x => Ok(x.rev()),
         }
     }
 
@@ -172,7 +154,7 @@ impl Motor {
     pub fn get_target_velocity(&self) -> Result<AngularVelocity, MotorError> {
         match unsafe { bindings::motor_get_target_velocity(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(AngularVelocity::new::<revolution_per_minute>(x as f64)),
+            x => Ok((x as f64).rpm()),
         }
     }
 
@@ -180,15 +162,15 @@ impl Motor {
     pub fn get_actual_velocity(&self) -> Result<AngularVelocity, MotorError> {
         match unsafe { bindings::motor_get_actual_velocity(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(AngularVelocity::new::<revolution_per_minute>(x)),
+            x => Ok(x.rpm()),
         }
     }
 
     /// Gets the current drawn by the motor.
-    pub fn get_current_draw(&self) -> Result<ElectricCurrent, MotorError> {
+    pub fn get_current_draw(&self) -> Result<Current, MotorError> {
         match unsafe { bindings::motor_get_current_draw(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(ElectricCurrent::new::<milliampere>(x as f64)),
+            x => Ok((x as f64).mA()),
         }
     }
 
@@ -209,7 +191,7 @@ impl Motor {
     pub fn get_efficiency(&self) -> Result<Ratio, MotorError> {
         match unsafe { bindings::motor_get_efficiency(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(Ratio::new::<percent>(x)),
+            x => Ok(x.percent()),
         }
     }
 
@@ -217,7 +199,7 @@ impl Motor {
     pub fn get_position(&self) -> Result<Angle, MotorError> {
         match unsafe { bindings::motor_get_position(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(Angle::new::<revolution>(x)),
+            x => Ok(x.rev()),
         }
     }
 
@@ -225,15 +207,15 @@ impl Motor {
     pub fn get_power(&self) -> Result<Power, MotorError> {
         match unsafe { bindings::motor_get_power(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(Power::new::<watt>(x)),
+            x => Ok(x.W()),
         }
     }
 
-    /// Gets the temperature of the motor.
-    pub fn get_temperature(&self) -> Result<ThermodynamicTemperature, MotorError> {
+    /// Gets the temperature of the motor, in degrees Celsius.
+    pub fn get_temperature(&self) -> Result<f64, MotorError> {
         match unsafe { bindings::motor_get_temperature(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(ThermodynamicTemperature::new::<degree_celsius>(x)),
+            x => Ok(x),
         }
     }
 
@@ -241,15 +223,15 @@ impl Motor {
     pub fn get_torque(&self) -> Result<Torque, MotorError> {
         match unsafe { bindings::motor_get_torque(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(MotorError::from_errno()),
-            x => Ok(Torque::new::<newton_meter>(x)),
+            x => Ok(x.Nm()),
         }
     }
 
     /// Gets the voltage delivered to the motor.
-    pub fn get_voltage(&self) -> Result<ElectricPotential<f64>, MotorError> {
+    pub fn get_voltage(&self) -> Result<Voltage, MotorError> {
         match unsafe { bindings::motor_get_voltage(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(ElectricPotential::new::<millivolt>(x as f64)),
+            x => Ok((x as f64).mV()),
         }
     }
 
@@ -289,10 +271,10 @@ impl Motor {
     ///
     /// The default value is 2.5 A, however the effective limit may be lower if
     /// more then 8 motors are competing for power.
-    pub fn get_current_limit(&self) -> Result<ElectricCurrent, MotorError> {
+    pub fn get_current_limit(&self) -> Result<Current, MotorError> {
         match unsafe { bindings::motor_get_current_limit(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(ElectricCurrent::new::<milliampere>(x as f64)),
+            x => Ok((x as f64).mA()),
         }
     }
 
@@ -314,10 +296,10 @@ impl Motor {
     ///
     /// Default value is 0V, which means that there is no software limitation
     /// imposed on the voltage.
-    pub fn get_voltage_limit(&self) -> Result<ElectricPotential<i32>, MotorError> {
+    pub fn get_voltage_limit(&self) -> Result<Voltage, MotorError> {
         match unsafe { bindings::motor_get_voltage_limit(self.port) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
-            x => Ok(ElectricPotential::new::<volt>(x)),
+            x => Ok((x as f64).V()),
         }
     }
 
@@ -341,10 +323,8 @@ impl Motor {
     }
 
     /// Sets the current limit for the motor.
-    pub fn set_current_limit(&mut self, limit: ElectricCurrent) -> Result<(), MotorError> {
-        match unsafe {
-            bindings::motor_set_current_limit(self.port, limit.get::<milliampere>() as i32)
-        } {
+    pub fn set_current_limit(&mut self, limit: Current) -> Result<(), MotorError> {
+        match unsafe { bindings::motor_set_current_limit(self.port, limit.to_mA() as i32) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -369,8 +349,8 @@ impl Motor {
     }
 
     /// Sets the voltage limit for the motor.
-    pub fn set_voltage_limit(&mut self, limit: ElectricPotential<i32>) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_set_voltage_limit(self.port, limit.get::<volt>()) } {
+    pub fn set_voltage_limit(&mut self, limit: Voltage) -> Result<(), MotorError> {
+        match unsafe { bindings::motor_set_voltage_limit(self.port, limit.to_V().ceil() as i32) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -378,8 +358,7 @@ impl Motor {
 
     /// Sets the "absolute" zero position of the motor.
     pub fn set_zero_position(&mut self, position: Angle) -> Result<(), MotorError> {
-        match unsafe { bindings::motor_set_zero_position(self.port, position.get::<revolution>()) }
-        {
+        match unsafe { bindings::motor_set_zero_position(self.port, position.to_rev()) } {
             bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(()),
         }
@@ -430,32 +409,32 @@ pub struct MotorData {
     pub target_velocity: AngularVelocity,
     /// The actual velocity of the motor.
     pub actual_velocity: AngularVelocity,
-    /// The current drawn by the motor in milliamperes.
-    pub current_draw: ElectricCurrent,
+    /// The current drawn by the motor.
+    pub current_draw: Current,
     /// The direction of movement for the motor.
     pub direction: Direction,
-    /// The efficiency of the motor in percent.
-    pub efficiency: Ratio,
-    /// The absolute position of the motor in encoder ticks.
+    /// The efficiency of the motor.
+    pub efficiency: Angle,
+    /// The absolute position of the motor.
     pub position: Angle,
-    /// The power drawn by the motor in watts.
+    /// The power drawn by the motor.
     pub power: Power,
     /// The temperature of the motor in degrees Celsius.
-    pub temperature: ThermodynamicTemperature,
-    /// The torque of the motor in newton-metres.
+    pub temperature: f64,
+    /// The torque of the motor.
     pub torque: Torque,
-    /// The voltage delivered to the motor in millivolts.
-    pub voltage: ElectricPotential<f64>,
+    /// The voltage delivered to the motor.
+    pub voltage: Voltage,
     /// Whether the motor is drawing over its current limit.
     pub over_current: bool,
     /// Whether the motor's temperature is above its limit.
     pub over_temp: bool,
     /// The brake mode that was set for the motor.
     pub brake_mode: BrakeMode,
-    /// The current limit for the motor in milliamperes.
-    pub current_limit: ElectricCurrent,
-    /// The voltage limit set by the user in volts.
-    pub voltage_limit: ElectricPotential<i32>,
+    /// The current limit for the motor.
+    pub current_limit: Current,
+    /// The voltage limit set by the user.
+    pub voltage_limit: Voltage,
 }
 
 #[repr(transparent)]
@@ -515,7 +494,7 @@ impl<const N: usize> MotorGroup<N> {
 
     /// Sets the output voltage for the motor from -12 V to 12 V; see
     /// [`Motor::move_voltage()`].
-    pub fn move_voltage(&mut self, voltage: ElectricPotential<f64>) -> Result<(), MotorError> {
+    pub fn move_voltage(&mut self, voltage: Voltage) -> Result<(), MotorError> {
         for motor in self.motors.iter_mut() {
             motor.move_voltage(voltage)?;
         }
@@ -543,29 +522,29 @@ impl<const N: usize> MotorGroup<N> {
     /// Gets the average actual velocity of the motors.
     pub fn get_average_actual_velocity(&self) -> Result<AngularVelocity, MotorError> {
         let mut value = self.get_actual_velocity()?.into_iter().sum();
-        value *= (N as f64).recip();
+        value /= N as f64;
         Ok(value)
     }
 
     /// Gets the current draw of each motor; see [`Motor::get_current_draw()`].
-    pub fn get_current_draw(&self) -> Result<[ElectricCurrent; N], MotorError> {
+    pub fn get_current_draw(&self) -> Result<[Current; N], MotorError> {
         self.motors.each_ref().try_map(Motor::get_current_draw)
     }
 
     /// Gets the total current draw of the motors.
-    pub fn get_total_current_draw(&self) -> Result<ElectricCurrent, MotorError> {
+    pub fn get_total_current_draw(&self) -> Result<Current, MotorError> {
         Ok(self.get_current_draw()?.into_iter().sum())
     }
 
     /// Gets the efficiency of each motor; see [`Motor::get_efficiency()`].
-    pub fn get_efficiency(&self) -> Result<[Ratio; N], MotorError> {
+    pub fn get_efficiency(&self) -> Result<[Angle; N], MotorError> {
         self.motors.each_ref().try_map(Motor::get_efficiency)
     }
 
     /// Gets the average efficiency of the motors.
-    pub fn get_average_efficiency(&self) -> Result<Ratio, MotorError> {
+    pub fn get_average_efficiency(&self) -> Result<Angle, MotorError> {
         let mut value = self.get_efficiency()?.into_iter().sum();
-        value *= (N as f64).recip();
+        value /= N as f64;
         Ok(value)
     }
 
@@ -577,7 +556,7 @@ impl<const N: usize> MotorGroup<N> {
     /// Gets the average position of the motors.
     pub fn get_average_position(&self) -> Result<Angle, MotorError> {
         let mut value = self.get_position()?.into_iter().sum();
-        value *= (N as f64).recip();
+        value /= N as f64;
         Ok(value)
     }
 
@@ -592,16 +571,16 @@ impl<const N: usize> MotorGroup<N> {
     }
 
     /// Gets the temperate of each motor; see [`Motor::get_temperature()`].
-    pub fn get_temperature(&self) -> Result<[ThermodynamicTemperature; N], MotorError> {
+    pub fn get_temperature(&self) -> Result<[f64; N], MotorError> {
         self.motors.each_ref().try_map(Motor::get_temperature)
     }
 
-    /*
-    pub fn get_average_temperature(&self) -> Result<ThermodynamicTemperature, MotorError> {
+    /// Gets the average temperate of the motors.
+    pub fn get_average_temperature(&self) -> Result<f64, MotorError> {
         let mut value = self.get_temperature()?.into_iter().sum();
-        value *= (N as f64).recip();
+        value /= N as f64;
         Ok(value)
-    } // */
+    }
 
     /// Gets the torque applied by each motor; see [`Motor::get_torque()`].
     pub fn get_torque(&self) -> Result<[Torque; N], MotorError> {
@@ -614,14 +593,14 @@ impl<const N: usize> MotorGroup<N> {
     }
 
     /// Gets the voltage delivered to each motor; see [`Motor::get_voltage()`].
-    pub fn get_voltage(&self) -> Result<[ElectricPotential<f64>; N], MotorError> {
+    pub fn get_voltage(&self) -> Result<[Voltage; N], MotorError> {
         self.motors.each_ref().try_map(Motor::get_voltage)
     }
 
     /// Gets the average voltage delivered to the motors.
-    pub fn get_average_voltage(&self) -> Result<ElectricPotential<f64>, MotorError> {
+    pub fn get_average_voltage(&self) -> Result<Voltage, MotorError> {
         let mut value = self.get_voltage()?.into_iter().sum();
-        value *= (N as f64).recip();
+        value /= N as f64;
         Ok(value)
     }
 
@@ -658,7 +637,7 @@ impl<const N: usize> MotorGroup<N> {
 
     /// Sets the current limit of all motors in the group; see
     /// [`Motor::set_current_limit()`].
-    pub fn set_current_limit(&mut self, limit: ElectricCurrent) -> Result<(), MotorError> {
+    pub fn set_current_limit(&mut self, limit: Current) -> Result<(), MotorError> {
         for motor in self.motors.iter_mut() {
             motor.set_current_limit(limit)?;
         }
@@ -667,7 +646,7 @@ impl<const N: usize> MotorGroup<N> {
 
     /// Sets the voltage limit of all motors in the group; see
     /// [`Motor::set_voltage_limit()`].
-    pub fn set_voltage_limit(&mut self, limit: ElectricPotential<i32>) -> Result<(), MotorError> {
+    pub fn set_voltage_limit(&mut self, limit: Voltage) -> Result<(), MotorError> {
         for motor in self.motors.iter_mut() {
             motor.set_voltage_limit(limit)?;
         }

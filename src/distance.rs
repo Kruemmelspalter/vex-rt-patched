@@ -1,9 +1,9 @@
 //! # Distance Sensor API.
 
-use uom::si::{
-    f64::{Length, Velocity},
-    length::millimeter,
-    velocity::millimeter_per_second,
+use qunit::{
+    length::{Length, LengthExt},
+    time::{Time, TimeExt},
+    Matrix,
 };
 
 use crate::{
@@ -34,7 +34,7 @@ impl DistanceSensor {
     pub fn get_distance(&self) -> Result<Length, DistanceSensorError> {
         match unsafe { bindings::distance_get(self.port) } {
             x if x == bindings::PROS_ERR_ => Err(DistanceSensorError::from_errno()),
-            x => Ok(Length::new::<millimeter>(x as f64)),
+            x => Ok((x as f64).mm()),
         }
     }
 
@@ -64,10 +64,10 @@ impl DistanceSensor {
     }
 
     /// Gets the object velocity.
-    pub fn get_object_velocity(&self) -> Result<Velocity, DistanceSensorError> {
+    pub fn get_object_velocity(&self) -> Result<Matrix![Length / Time], DistanceSensorError> {
         match unsafe { bindings::distance_get_object_velocity(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(DistanceSensorError::from_errno()),
-            x => Ok(Velocity::new::<millimeter_per_second>(x)),
+            x => Ok(x.mm() / 1.0.s()),
         }
     }
 }
@@ -97,7 +97,7 @@ pub struct DistanceData {
     /// The object size; see [`DistanceSensor::get_object_size()`] for details.
     pub size: i32,
     /// The object velocity in meters per second.
-    pub velocity: Velocity,
+    pub velocity: Matrix![Length / Time],
 }
 
 /// Represents possible errors for distance sensor operations.
