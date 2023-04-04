@@ -7,7 +7,7 @@ use std::{
 use zip_extensions::zip_extract;
 
 // Path to PROS release zip (relative to project root)
-const PROS_ZIP_STR: &str = "build/kernel@3.7.2.zip";
+const PROS_ZIP_STR: &str = "build/kernel@3.8.0.zip";
 
 // Path to PROS wrapper.h (relative to project root)
 const PROS_WRAPPER_STR: &str = "build/wrapper.h";
@@ -119,6 +119,20 @@ const WHITELISTED_FUNCS: &[&str] = &[
     "mutex_recursive_create",
     "mutex_recursive_give",
     "mutex_recursive_take",
+    "optical_disable_gesture",
+    "optical_enable_gesture",
+    "optical_get_brightness",
+    "optical_get_gesture",
+    "optical_get_gesture_raw",
+    "optical_get_hue",
+    "optical_get_integration_time",
+    "optical_get_led_pwm",
+    "optical_get_proximity",
+    "optical_get_raw",
+    "optical_get_rgb",
+    "optical_get_saturation",
+    "optical_set_integration_time",
+    "optical_set_led_pwm",
     "mutex_take",
     "queue_append",
     "queue_create",
@@ -184,6 +198,7 @@ const WHITELISTED_VARS: &[&str] = &[
     "INTERNAL_ADI_PORT",
     "PROS_ERR_",
     "PROS_ERR_F_",
+    "PROS_ERR_U_",
     "TASK_PRIORITY_DEFAULT",
     "TASK_PRIORITY_MAX",
     "TASK_STACK_DEPTH_DEFAULT",

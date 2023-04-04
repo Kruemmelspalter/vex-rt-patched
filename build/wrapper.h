@@ -4,3 +4,4 @@
 
 const int32_t PROS_ERR_ = PROS_ERR;
 const double PROS_ERR_F_ = PROS_ERR_F;
+const uint32_t PROS_ERR_U_ = PROS_ERR;

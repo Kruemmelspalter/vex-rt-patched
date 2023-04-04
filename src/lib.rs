@@ -32,6 +32,7 @@ pub mod logging;
 pub mod machine;
 pub mod macros;
 pub mod motor;
+pub mod optical;
 pub mod peripherals;
 pub mod prelude;
 pub mod robot;
