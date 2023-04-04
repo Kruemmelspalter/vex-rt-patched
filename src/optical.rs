@@ -1,10 +1,10 @@
 //! # Optical sensor API.
 
-use core::convert::{TryFrom, TryInto};
 use crate::{
     bindings,
     error::{get_errno, Error},
 };
+use core::convert::{TryFrom, TryInto};
 
 use qunit::time::{Time, TimeExt};
 
@@ -22,21 +22,22 @@ impl OpticalSensor<IgnoreGestures> {
     /// # Safety
     ///
     /// This function is unsafe because it allows the user to create multiple
-    /// mutable references to the same optical sensor. You likely want to implement
-    /// [`Robot::new`](crate::robot::Robot::new()) instead.
+    /// mutable references to the same optical sensor. You likely want to
+    /// implement [`Robot::new`](crate::robot::Robot::new()) instead.
     pub unsafe fn new(port: u8) -> Result<Self, OpticalSensorError> {
         match port {
-            1..=21 => Ok(OpticalSensor{
+            1..=21 => Ok(OpticalSensor {
                 port,
-                gesture_detection: IgnoreGestures
+                gesture_detection: IgnoreGestures,
             }),
-            _ => Err(OpticalSensorError::PortOutOfRange)
+            _ => Err(OpticalSensorError::PortOutOfRange),
         }
     }
 }
 
 impl<GestureDetection> OpticalSensor<GestureDetection> {
-    /// Get the Optical Sensor’s current brightness as a value in the range of 0.0 to 1.0.
+    /// Get the Optical Sensor’s current brightness as a value in the range of
+    /// 0.0 to 1.0.
     pub fn get_brightness(&self) -> Result<f64, OpticalSensorError> {
         match unsafe { bindings::optical_get_brightness(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(OpticalSensorError::from_errno()),
@@ -44,7 +45,8 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
         }
     }
 
-    /// Get the Optical Sensor’s current hue as a value in the range of 0.0 to 359.999.
+    /// Get the Optical Sensor’s current hue as a value in the range of 0.0 to
+    /// 359.999.
     pub fn get_hue(&self) -> Result<f64, OpticalSensorError> {
         match unsafe { bindings::optical_get_hue(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(OpticalSensorError::from_errno()),
@@ -62,7 +64,8 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
         }
     }
 
-    /// Get the Optical Sensor’s current proximity as a value in the range of 0 to 255.
+    /// Get the Optical Sensor’s current proximity as a value in the range of 0
+    /// to 255.
     pub fn get_proximity(&self) -> Result<i32, OpticalSensorError> {
         match unsafe { bindings::optical_get_proximity(self.port) } {
             bindings::PROS_ERR_ => Err(OpticalSensorError::from_errno()),
@@ -86,7 +89,9 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
     /// Get the Optical Sensor’s RGB data.
     pub fn get_rgb(&self) -> Result<OpticalRGB, OpticalSensorError> {
         match unsafe { bindings::optical_get_rgb(self.port) } {
-            data if data.brightness == bindings::PROS_ERR_F_ => Err(OpticalSensorError::from_errno()),
+            data if data.brightness == bindings::PROS_ERR_F_ => {
+                Err(OpticalSensorError::from_errno())
+            }
             data => Ok(OpticalRGB {
                 red: data.red,
                 green: data.green,
@@ -96,7 +101,8 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
         }
     }
 
-    /// Get the Optical Sensor’s current saturation as a value in the range of 0.0 to 1.0.
+    /// Get the Optical Sensor’s current saturation as a value in the range of
+    /// 0.0 to 1.0.
     pub fn get_saturation(&self) -> Result<f64, OpticalSensorError> {
         match unsafe { bindings::optical_get_saturation(self.port) } {
             x if x == bindings::PROS_ERR_F_ => Err(OpticalSensorError::from_errno()),
@@ -108,7 +114,9 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
     ///
     /// Takes a value between 0 and 100, inclusive.
     pub fn set_led_pwm(&mut self, v: u8) -> Result<(), OpticalSensorError> {
-        if 100 < v { return Err(OpticalSensorError::InvalidValue) }
+        if 100 < v {
+            return Err(OpticalSensorError::InvalidValue);
+        }
         match unsafe { bindings::optical_set_led_pwm(self.port, v) } {
             1 => Ok(()),
             _ => Err(OpticalSensorError::from_errno()),
@@ -121,9 +129,11 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
             x => Ok((x as f64).ms()),
         }
     }
-    
+
     pub fn set_integration_time(&mut self, time: Time) -> Result<(), OpticalSensorError> {
-        if time < 3.0.ms() || time > 712.0.ms() { return Err(OpticalSensorError::InvalidValue) }
+        if time < 3.0.ms() || time > 712.0.ms() {
+            return Err(OpticalSensorError::InvalidValue);
+        }
         match unsafe { bindings::optical_set_integration_time(self.port, time.to_ms()) } {
             1 => Ok(()),
             _ => Err(OpticalSensorError::from_errno()),
@@ -132,7 +142,7 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
 }
 
 impl OpticalSensor<DetectGestures> {
-//impl OpticalSensor<GestureDetection::Enabled> {
+    //impl OpticalSensor<GestureDetection::Enabled> {
 
     /// Get the Optical Sensor’s most recent gesture data
     pub fn get_gesture(&self) -> Result<OpticalDirection, OpticalSensorError> {
@@ -150,7 +160,9 @@ impl OpticalSensor<DetectGestures> {
     /// Get the Optical Sensor’s most recent raw gesture data
     pub fn get_gesture_raw(&self) -> Result<OpticalGesture, OpticalSensorError> {
         match unsafe { bindings::optical_get_gesture_raw(self.port) } {
-            data if data.time == bindings::PROS_ERR_U_ => Err(OpticalSensorError::from_errno().into()),
+            data if data.time == bindings::PROS_ERR_U_ => {
+                Err(OpticalSensorError::from_errno().into())
+            }
             data => Ok(OpticalGesture {
                 up: data.udata,
                 down: data.ddata,
@@ -167,26 +179,32 @@ impl OpticalSensor<DetectGestures> {
 
 impl TryFrom<OpticalSensor<DetectGestures>> for OpticalSensor<IgnoreGestures> {
     type Error = (OpticalSensorError, OpticalSensor<DetectGestures>);
-    fn try_from(sensor: OpticalSensor<DetectGestures>) -> Result<OpticalSensor<IgnoreGestures>, (OpticalSensorError, OpticalSensor<DetectGestures>)> {
+    fn try_from(
+        sensor: OpticalSensor<DetectGestures>,
+    ) -> Result<OpticalSensor<IgnoreGestures>, (OpticalSensorError, OpticalSensor<DetectGestures>)>
+    {
         match unsafe { bindings::optical_disable_gesture(sensor.port) } {
             1 => Ok(OpticalSensor {
                 port: sensor.port,
                 gesture_detection: IgnoreGestures,
             }),
-            _ => Err((OpticalSensorError::from_errno(), sensor))
+            _ => Err((OpticalSensorError::from_errno(), sensor)),
         }
     }
 }
 
 impl TryFrom<OpticalSensor<IgnoreGestures>> for OpticalSensor<DetectGestures> {
     type Error = (OpticalSensorError, OpticalSensor<IgnoreGestures>);
-    fn try_from(sensor: OpticalSensor<IgnoreGestures>) -> Result<OpticalSensor<DetectGestures>, (OpticalSensorError, OpticalSensor<IgnoreGestures>)> {
+    fn try_from(
+        sensor: OpticalSensor<IgnoreGestures>,
+    ) -> Result<OpticalSensor<DetectGestures>, (OpticalSensorError, OpticalSensor<IgnoreGestures>)>
+    {
         match unsafe { bindings::optical_enable_gesture(sensor.port) } {
             1 => Ok(OpticalSensor {
                 port: sensor.port,
                 gesture_detection: DetectGestures,
             }),
-            _ => Err((OpticalSensorError::from_errno(), sensor))
+            _ => Err((OpticalSensorError::from_errno(), sensor)),
         }
     }
 }
@@ -225,7 +243,10 @@ impl From<OpticalSensorError> for Error {
             }
             OpticalSensorError::InvalidValue => Error::Custom("User provided invalid value".into()),
             OpticalSensorError::UnknownInt(n) => Error::System(n),
-            OpticalSensorError::UnknownUint(n) => Error::System(n.try_into().expect("OpticalSensorError::UnknownUint cannot convert to an Int")),
+            OpticalSensorError::UnknownUint(n) => Error::System(
+                n.try_into()
+                    .expect("OpticalSensorError::UnknownUint cannot convert to an Int"),
+            ),
         }
     }
 }
@@ -251,45 +272,45 @@ pub enum OpticalDirection {
 #[derive(Debug)]
 pub struct OpticalGesture {
     /// Up component of gesture
-    up: u8,
+    pub up: u8,
     /// Down component of gesture
-    down: u8,
+    pub down: u8,
     /// Left component of gesture
-    left: u8,
+    pub left: u8,
     /// Right component of gesture
-    right: u8,
+    pub right: u8,
     /// Type of gesture
-    r#type: u8,
+    pub r#type: u8,
     /// Padding
-    padding: u8,
+    pub padding: u8,
     /// Number of gestures
-    count: u16,
+    pub count: u16,
     /// Time since gesture was recognized
-    time: u32,
+    pub time: u32,
 }
 
 /// Represents optical sensor raw data.
 #[derive(Debug)]
 pub struct OpticalRaw {
     /// Clear component
-    clear: u32,
+    pub clear: u32,
     /// Red component
-    red: u32,
+    pub red: u32,
     /// Green component
-    green: u32,
+    pub green: u32,
     /// Blue component
-    blue: u32,
+    pub blue: u32,
 }
 
 /// Represents optical sensor RGB data.
+#[derive(Debug)]
 pub struct OpticalRGB {
     /// Red component
-    red: f64,
+    pub red: f64,
     /// Green component
-    green: f64,
+    pub green: f64,
     /// Blue component
-    blue: f64,
+    pub blue: f64,
     /// Brightness component
-    brightness: f64,
+    pub brightness: f64,
 }
-
