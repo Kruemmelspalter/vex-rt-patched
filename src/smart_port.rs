@@ -7,6 +7,7 @@ use crate::{
     error::Error,
     imu::InertialSensor,
     motor::{Gearset, Motor, MotorError, MotorGroup},
+    optical::{IgnoreGestures, OpticalSensor},
     rotation::{RotationSensor, RotationSensorError},
     serial::Serial,
 };
@@ -70,6 +71,12 @@ impl SmartPort {
     }
 
     /// Converts a `SmartPort` into a
+    /// [`OpticalSensor`](crate::optical::OpticalSensor).
+    pub fn into_optical(self) -> OpticalSensor<IgnoreGestures> {
+        self.into()
+    }
+
+    /// Converts a `SmartPort` into a
     /// [`RotationSensor`](crate::rotation::RotationSensor).
     #[inline]
     pub fn into_rotation(self, reversed: bool) -> Result<RotationSensor, RotationSensorError> {
@@ -115,6 +122,12 @@ impl From<SmartPort> for DistanceSensor {
 impl From<SmartPort> for InertialSensor {
     fn from(port: SmartPort) -> Self {
         unsafe { InertialSensor::new(port.port) }
+    }
+}
+
+impl From<SmartPort> for OpticalSensor<IgnoreGestures> {
+    fn from(port: SmartPort) -> Self {
+        unsafe { OpticalSensor::new(port.port) }
     }
 }
 

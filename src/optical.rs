@@ -24,13 +24,10 @@ impl OpticalSensor<IgnoreGestures> {
     /// This function is unsafe because it allows the user to create multiple
     /// mutable references to the same optical sensor. You likely want to
     /// implement [`Robot::new`](crate::robot::Robot::new()) instead.
-    pub unsafe fn new(port: u8) -> Result<Self, OpticalSensorError> {
-        match port {
-            1..=21 => Ok(OpticalSensor {
-                port,
-                gesture_detection: IgnoreGestures,
-            }),
-            _ => Err(OpticalSensorError::PortOutOfRange),
+    pub unsafe fn new(port: u8) -> OpticalSensor<IgnoreGestures> {
+        OpticalSensor {
+            port,
+            gesture_detection: IgnoreGestures,
         }
     }
 }
@@ -59,8 +56,8 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
     /// Returns a value between 0 and 100, inclusive.
     pub fn get_led_pwm(&self) -> Result<i32, OpticalSensorError> {
         match unsafe { bindings::optical_get_led_pwm(self.port) } {
-            x => Ok(x),
             bindings::PROS_ERR_ => Err(OpticalSensorError::from_errno().into()),
+            x => Ok(x),
         }
     }
 
@@ -123,13 +120,18 @@ impl<GestureDetection> OpticalSensor<GestureDetection> {
         }
     }
 
+    ///Gets the integration time (update rate) of the optical sensor in
+    /// milliseconds.
     pub fn get_integration_time(&self) -> Result<Time, OpticalSensorError> {
         match unsafe { bindings::optical_get_integration_time(self.port) } {
-            bindings::PROS_ERR_F_ => Err(OpticalSensorError::from_errno()),
+            x if x == bindings::PROS_ERR_F_ => Err(OpticalSensorError::from_errno()),
             x => Ok((x as f64).ms()),
         }
     }
 
+    ///Sets the integration time (update rate) for the optical sensor in
+    /// milliseconds. The minimum integration time is 3 milliseconds. The
+    /// maximum integration time is 712 milliseconds
     pub fn set_integration_time(&mut self, time: Time) -> Result<(), OpticalSensorError> {
         if time < 3.0.ms() || time > 712.0.ms() {
             return Err(OpticalSensorError::InvalidValue);
