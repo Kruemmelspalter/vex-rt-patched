@@ -344,6 +344,7 @@ fn gen_impl(
         vars,
         init,
         states,
+        fns,
         ..
     } = input;
 
@@ -463,7 +464,7 @@ fn gen_impl(
                         }
                     }
                 },
-            )
+            ).chain(fns.iter().cloned())
             .collect_vec(),
     };
 

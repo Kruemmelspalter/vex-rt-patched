@@ -6,8 +6,8 @@ use syn::{
     punctuated::Punctuated,
     spanned::Spanned,
     token::{Brace, Paren},
-    Attribute, Block, Error, Expr, Field, FnArg, Generics, Ident, PatType, Path, ReturnType, Token,
-    Visibility,
+    Attribute, Block, Error, Expr, Field, FnArg, Generics, Ident, ImplItem, PatType, Path,
+    ReturnType, Token, Visibility,
 };
 
 use super::attributes::StackDepthAttr;
@@ -25,6 +25,7 @@ pub struct Input {
     pub vars: Vars,
     pub init: InitialState,
     pub states: Vec<State>,
+    pub fns: Vec<ImplItem>,
 }
 
 impl Parse for Input {
@@ -57,7 +58,14 @@ impl Parse for Input {
             args: Args::parse(input)?,
             vars: Vars::parse(input)?,
             init: InitialState::parse(input)?,
-            states: Punctuated::<_, Nothing>::parse_terminated(input)?
+            states: {
+                let mut states = Vec::new();
+                while let Ok(state) = input.clone().parse() {
+                    states.push(state);
+                }
+                states
+            },
+            fns: Punctuated::<_, Nothing>::parse_terminated(input)?
                 .into_iter()
                 .collect_vec(),
         })
