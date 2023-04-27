@@ -45,7 +45,7 @@ impl Motor {
             port,
             bindings::motor_encoder_units_e_E_MOTOR_ENCODER_ROTATIONS,
         ) {
-            bindings::PROS_ERR_ => Err(MotorError::from_errno()),
+            // bindings::PROS_ERR_ => Err(MotorError::from_errno()),
             _ => Ok(motor),
         }
     }
