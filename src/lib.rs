@@ -40,6 +40,7 @@ pub mod rotation;
 pub mod rtos;
 pub mod serial;
 pub mod smart_port;
+pub mod vexlink;
 
 #[doc(hidden)]
 pub use spin::once;

@@ -10,6 +10,7 @@ use crate::{
     optical::{IgnoreGestures, OpticalSensor},
     rotation::{RotationSensor, RotationSensorError},
     serial::Serial,
+    vexlink::VexLink,
 };
 use core::convert::{TryFrom, TryInto};
 
@@ -76,6 +77,11 @@ impl SmartPort {
         self.into()
     }
 
+    /// ['Vexlink'](crate::vexlink::Vexlink).
+    pub fn into_vexlink(self) -> VexLink {
+        self.into()
+    }
+
     /// Converts a `SmartPort` into a
     /// [`RotationSensor`](crate::rotation::RotationSensor).
     #[inline]
@@ -131,6 +137,12 @@ impl From<SmartPort> for OpticalSensor<IgnoreGestures> {
     }
 }
 
+impl From<SmartPort> for VexLink {
+    fn from(port: SmartPort) -> Self {
+        unsafe { VexLink::new(port.port) }
+    }
+}
+
 impl TryFrom<(SmartPort, bool)> for RotationSensor {
     type Error = RotationSensorError;
 
@@ -169,6 +181,9 @@ pub enum DeviceType {
 
     /// V5 Optical Sensor.
     Optical,
+
+    /// Vexlink API
+    VexLink,
 
     /// Generic serial mode.
     Serial,
