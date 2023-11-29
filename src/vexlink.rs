@@ -1,8 +1,14 @@
+use core::time::Duration;
+
 use crate::{
     bindings,
     error::{get_errno, Error},
+    prelude::{delay_until, time_since_start, Task},
+    rtos::{queue, Context, SendQueue},
+    select,
 };
 
+use alloc::collections::VecDeque;
 use libc::c_void;
 use slice_copy::copy;
 
@@ -93,14 +99,53 @@ impl VexLink {
         }
     }
 
-    pub fn link_transmit(&self, data: &str, data_size: u16) -> Result<u32, VexLinkError> {
+    pub fn link_transmit(&self, data: &str, data_size: u16) {
         let mut ptr: [libc::c_char; 19] = Default::default();
         copy(&mut ptr, data.as_bytes());
-        match unsafe { bindings::link_transmit(self.port, ptr.as_ptr() as *mut c_void, data_size) }
-        {
-            bindings::PROS_ERR_U_ => Err(VexLinkError::from_errno()),
-            x => Ok(x),
-        }
+        // Needs to take a Packet or a String
+        self.queue_vex(ptr, data_size);
+    }
+
+    pub fn queue_vex(&self, ptr: [u8; 19], data_size: u16) {
+        let port = self.port;
+        let mut queue1: Option<(Context, SendQueue<Packet>)> = Default::default();
+        queue1.get_or_insert_with(|| {
+            let (send, recv) = queue(VecDeque::<Packet>::new());
+            let ctx = Context::new_global();
+            let ctx_cloned = ctx.clone();
+            let x = Task::spawn_ext(
+                "VexLink",
+                bindings::TASK_PRIORITY_MAX,
+                bindings::TASK_STACK_DEPTH_DEFAULT as u16,
+                move || {
+                    let mut delay_target = None;
+                    let mut offset = 0usize;
+                    let mut clear = false;
+                    let mut rumble: Option<[libc::c_char; 9]> = None;
+                    'main: loop {
+                        let command: Option<Packet> = select! {
+                            cmd = recv.select() => Some(cmd),
+                            _ = delay_until(t); Some(t) = delay_target => None,
+                        };
+
+                        let check = match unsafe {
+                            bindings::link_transmit(port, ptr.as_ptr() as *mut c_void, data_size)
+                        } {
+                            bindings::PROS_ERR_U_ => {
+                                delay_target = Some(time_since_start() + Duration::from_millis(25));
+                                Err(VexLinkError::from_errno())
+                            }
+                            x => {
+                                delay_target = Some(time_since_start() + Duration::from_millis(25));
+                                Ok(x)
+                            }
+                        };
+                    }
+                },
+            )
+            .unwrap();
+            (ctx, send)
+        });
     }
 
     pub fn link_receive(&self, dest: &str, data_size: u16) -> Result<u32, VexLinkError> {
@@ -156,4 +201,8 @@ impl From<VexLinkError> for Error {
             VexLinkError::UnknownInt(x) => Error::System(x)
         }
     }
+}
+
+enum Packet {
+    data,
 }
